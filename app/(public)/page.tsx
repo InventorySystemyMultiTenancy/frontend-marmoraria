@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { HeroSection } from '@/components/public/HeroSection';
-import { RotatingMarbleSlab } from '@/components/public/RotatingMarbleSlab';
+import { ScrollScrubMarbleVideo } from '@/components/public/ScrollScrubMarbleVideo';
 import { ScrollingMarbles } from '@/components/public/ScrollingMarbles';
 import { HowItWorks } from '@/components/public/HowItWorks';
 import { Marble } from '@/types';
@@ -25,7 +25,7 @@ export default async function HomePage() {
     <>
       <HeroSection marbles={marbles} />
 
-      <RotatingMarbleSlab />
+      <ScrollScrubMarbleVideo />
 
       <section className="py-16">
         <h2 className="text-center text-white/50 text-sm uppercase tracking-widest mb-6">Nosso catálogo</h2>
