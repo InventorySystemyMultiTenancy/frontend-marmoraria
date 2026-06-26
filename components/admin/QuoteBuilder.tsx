@@ -11,6 +11,11 @@ import { Input, Label, Select, Textarea } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 
+interface ExtraInput {
+  name: string;
+  price: string;
+}
+
 interface BuilderItem {
   marbleId: string;
   widthCm: string;
@@ -18,9 +23,18 @@ interface BuilderItem {
   thicknessMm: string;
   quantity: string;
   description: string;
+  extras: ExtraInput[];
 }
 
-const emptyItem: BuilderItem = { marbleId: '', widthCm: '', heightCm: '', thicknessMm: '20', quantity: '1', description: '' };
+const emptyItem: BuilderItem = {
+  marbleId: '',
+  widthCm: '',
+  heightCm: '',
+  thicknessMm: '20',
+  quantity: '1',
+  description: '',
+  extras: [],
+};
 
 export function QuoteBuilder() {
   const router = useRouter();
@@ -31,6 +45,9 @@ export function QuoteBuilder() {
   const [clientEmail, setClientEmail] = useState('');
   const [discount, setDiscount] = useState('0');
   const [discountPct, setDiscountPct] = useState('0');
+  const [freightDistanceKm, setFreightDistanceKm] = useState('');
+  const [freightRatePerKm, setFreightRatePerKm] = useState('');
+  const [freightManual, setFreightManual] = useState('');
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<BuilderItem[]>([{ ...emptyItem }]);
   const [error, setError] = useState<string | null>(null);
@@ -51,18 +68,51 @@ export function QuoteBuilder() {
     setItems((prev) => prev.map((item, i) => (i === idx ? { ...item, ...patch } : item)));
   }
 
-  function calcItemTotal(item: BuilderItem) {
+  function addExtra(idx: number) {
+    updateItem(idx, { extras: [...items[idx].extras, { name: '', price: '' }] });
+  }
+
+  function updateExtra(idx: number, extraIdx: number, patch: Partial<ExtraInput>) {
+    const extras = items[idx].extras.map((ex, i) => (i === extraIdx ? { ...ex, ...patch } : ex));
+    updateItem(idx, { extras });
+  }
+
+  function removeExtra(idx: number, extraIdx: number) {
+    updateItem(idx, { extras: items[idx].extras.filter((_, i) => i !== extraIdx) });
+  }
+
+  // Preview local: replica a formula padrao (area*pricePerM2 + perimetro*acabamento +
+  // perimetro3lados*instalacao) so para dar uma estimativa enquanto o usuario digita.
+  // O calculo oficial e sempre feito no backend ao salvar, usando a formula configurada.
+  function calcItemUnitPrice(item: BuilderItem) {
     const marble = marbles.find((m) => m.id === item.marbleId);
     const width = Number(item.widthCm) || 0;
     const height = Number(item.heightCm) || 0;
-    const qty = Number(item.quantity) || 0;
     const price = marble?.pricePerM2 ?? 0;
     const area = (width * height) / 10000;
-    return area * price * qty;
+    const perimeter = (2 * (width + height)) / 100;
+    const threeSidePerimeter = (width + 2 * height) / 100;
+    return area * price + perimeter * 110 + threeSidePerimeter * 150;
+  }
+
+  function calcItemExtrasTotal(item: BuilderItem) {
+    return item.extras.reduce((sum, ex) => sum + (Number(ex.price) || 0), 0);
+  }
+
+  function calcItemTotal(item: BuilderItem) {
+    const qty = Number(item.quantity) || 0;
+    return calcItemUnitPrice(item) * qty + calcItemExtrasTotal(item);
   }
 
   const subtotal = items.reduce((sum, item) => sum + calcItemTotal(item), 0);
-  const total = Math.max(0, subtotal - Number(discount || 0) - (subtotal * Number(discountPct || 0)) / 100);
+  const computedFreight =
+    freightDistanceKm && freightRatePerKm
+      ? Number(freightDistanceKm) * Number(freightRatePerKm)
+      : Number(freightManual || 0);
+  const total = Math.max(
+    0,
+    subtotal - Number(discount || 0) - (subtotal * Number(discountPct || 0)) / 100 + computedFreight
+  );
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -78,15 +128,20 @@ export function QuoteBuilder() {
           heightCm: Number(i.heightCm),
           thicknessMm: Number(i.thicknessMm),
           quantity: Number(i.quantity),
+          extras: i.extras
+            .filter((ex) => ex.name && ex.price)
+            .map((ex) => ({ name: ex.name, price: Number(ex.price) })),
         })),
         discount: Number(discount || 0),
         discountPct: Number(discountPct || 0),
+        freight: computedFreight,
+        freightDistanceKm: freightDistanceKm ? Number(freightDistanceKm) : undefined,
         notes: notes || undefined,
       };
       const { data } = await api.post('/quotes', payload);
       return data.quote;
     },
-    onSuccess: (quote) => router.push(`/orcamentos/${quote.id}`),
+    onSuccess: (quote) => router.push(`/admin/orcamentos/${quote.id}`),
     onError: () => setError('Não foi possível salvar o orçamento. Verifique os campos.'),
   });
 
@@ -141,7 +196,7 @@ export function QuoteBuilder() {
       <Card>
         <CardHeader className="flex items-center justify-between flex-row">
           <CardTitle>Itens do orçamento</CardTitle>
-          <Button size="sm" variant="outline" onClick={() => setItems((p) => [...p, { ...emptyItem }])}>
+          <Button size="sm" variant="outline" onClick={() => setItems((p) => [...p, { ...emptyItem, extras: [] }])}>
             <Plus size={14} /> Adicionar item
           </Button>
         </CardHeader>
@@ -161,10 +216,10 @@ export function QuoteBuilder() {
                       ))}
                     </Select>
                   </div>
-                  <div><Label>Descrição</Label><Input value={item.description} onChange={(e) => updateItem(idx, { description: e.target.value })} placeholder="Ex: Bancada de cozinha" /></div>
+                  <div><Label>Descrição</Label><Input value={item.description} onChange={(e) => updateItem(idx, { description: e.target.value })} placeholder="Ex: Pia 2.00x0.60 com instalação" /></div>
                   <div className="grid grid-cols-4 gap-2 col-span-2">
-                    <div><Label>Largura (cm)</Label><Input type="number" value={item.widthCm} onChange={(e) => updateItem(idx, { widthCm: e.target.value })} /></div>
-                    <div><Label>Altura (cm)</Label><Input type="number" value={item.heightCm} onChange={(e) => updateItem(idx, { heightCm: e.target.value })} /></div>
+                    <div><Label>Comprimento (cm)</Label><Input type="number" value={item.widthCm} onChange={(e) => updateItem(idx, { widthCm: e.target.value })} /></div>
+                    <div><Label>Profundidade (cm)</Label><Input type="number" value={item.heightCm} onChange={(e) => updateItem(idx, { heightCm: e.target.value })} /></div>
                     <div><Label>Espessura (mm)</Label><Input type="number" value={item.thicknessMm} onChange={(e) => updateItem(idx, { thicknessMm: e.target.value })} /></div>
                     <div><Label>Qtd.</Label><Input type="number" value={item.quantity} onChange={(e) => updateItem(idx, { quantity: e.target.value })} /></div>
                   </div>
@@ -175,6 +230,36 @@ export function QuoteBuilder() {
                   </button>
                 )}
               </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="mb-0">Extras (ex: cuba de inox)</Label>
+                  <button onClick={() => addExtra(idx)} className="text-xs text-marble-gold hover:underline cursor-pointer">
+                    + Adicionar extra
+                  </button>
+                </div>
+                {item.extras.map((extra, exIdx) => (
+                  <div key={exIdx} className="flex gap-2 items-center">
+                    <Input
+                      placeholder="Nome (ex: Cuba de inox)"
+                      value={extra.name}
+                      onChange={(e) => updateExtra(idx, exIdx, { name: e.target.value })}
+                      className="flex-1"
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Valor (R$)"
+                      value={extra.price}
+                      onChange={(e) => updateExtra(idx, exIdx, { price: e.target.value })}
+                      className="w-32"
+                    />
+                    <button onClick={() => removeExtra(idx, exIdx)} className="text-gray-400 hover:text-red-600 cursor-pointer">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
               <p className="text-sm text-right text-marble-gray">
                 Subtotal do item: <span className="font-semibold text-marble-dark">{formatCurrency(calcItemTotal(item))}</span>
               </p>
@@ -184,11 +269,31 @@ export function QuoteBuilder() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Desconto e observações</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Desconto, frete e observações</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Desconto (R$)</Label><Input type="number" value={discount} onChange={(e) => setDiscount(e.target.value)} /></div>
             <div><Label>Desconto (%)</Label><Input type="number" value={discountPct} onChange={(e) => setDiscountPct(e.target.value)} /></div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <Label>Distância (km)</Label>
+              <Input type="number" value={freightDistanceKm} onChange={(e) => setFreightDistanceKm(e.target.value)} />
+            </div>
+            <div>
+              <Label>Taxa por km (R$)</Label>
+              <Input type="number" value={freightRatePerKm} onChange={(e) => setFreightRatePerKm(e.target.value)} />
+            </div>
+            <div>
+              <Label>Ou frete manual (R$)</Label>
+              <Input
+                type="number"
+                value={freightManual}
+                onChange={(e) => setFreightManual(e.target.value)}
+                disabled={Boolean(freightDistanceKm && freightRatePerKm)}
+                placeholder={freightDistanceKm && freightRatePerKm ? formatCurrency(computedFreight) : ''}
+              />
+            </div>
           </div>
           <div><Label>Observações</Label><Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
         </CardContent>
@@ -197,6 +302,7 @@ export function QuoteBuilder() {
       <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 p-5">
         <div>
           <p className="text-sm text-gray-500">Subtotal: {formatCurrency(subtotal)}</p>
+          {computedFreight > 0 && <p className="text-sm text-gray-500">Frete: {formatCurrency(computedFreight)}</p>}
           <p className="text-xl font-bold text-marble-dark">Total: {formatCurrency(total)}</p>
         </div>
         <div className="text-right">

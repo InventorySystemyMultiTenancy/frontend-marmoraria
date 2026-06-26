@@ -167,6 +167,8 @@ export interface Quote {
   subtotal: number;
   discount: number;
   discountPct: number;
+  freight: number;
+  freightDistanceKm?: number | null;
   total: number;
   notes?: string | null;
   validUntil?: string | null;

@@ -89,7 +89,14 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
             <tbody>
               {data.items.map((item) => (
                 <tr key={item.id} className="border-b border-gray-50 last:border-0">
-                  <td className="px-5 py-3">{item.marble?.name}</td>
+                  <td className="px-5 py-3">
+                    {item.marble?.name}
+                    {item.extras && item.extras.length > 0 && (
+                      <div className="text-xs text-gray-400 mt-0.5">
+                        + {item.extras.map((ex) => `${ex.name} (${formatCurrency(ex.price)})`).join(', ')}
+                      </div>
+                    )}
+                  </td>
                   <td className="px-5 py-3">{item.widthCm}x{item.heightCm}cm ({item.thicknessMm}mm)</td>
                   <td className="px-5 py-3">{item.areaM2.toFixed(2)} m²</td>
                   <td className="px-5 py-3">{item.quantity}</td>
@@ -105,6 +112,12 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
         <CardContent className="space-y-1 text-sm">
           <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(data.subtotal)}</span></div>
           <div className="flex justify-between"><span>Desconto</span><span>{formatCurrency(data.discount + (data.subtotal * data.discountPct) / 100)}</span></div>
+          {data.freight > 0 && (
+            <div className="flex justify-between">
+              <span>Frete{data.freightDistanceKm ? ` (${data.freightDistanceKm}km)` : ''}</span>
+              <span>{formatCurrency(data.freight)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-lg font-bold text-marble-dark pt-2 border-t border-gray-100"><span>Total</span><span>{formatCurrency(data.total)}</span></div>
         </CardContent>
       </Card>
