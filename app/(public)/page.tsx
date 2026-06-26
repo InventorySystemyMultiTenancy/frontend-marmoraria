@@ -23,7 +23,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <HeroSection />
+      <HeroSection marbles={marbles} />
 
       <RotatingMarbleSlab />
 

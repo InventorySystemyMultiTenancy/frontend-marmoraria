@@ -4,10 +4,13 @@ import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
+import { Marble } from '@/types';
+import { HeroMarbleRoulette } from './HeroMarbleRoulette';
+import { FloatingMarbleSlab } from './FloatingMarbleSlab';
 
-const TITLE = 'Mármores e Granitos de Excelência';
+const TITLE_WORDS = ['Mármores', 'e', 'Granitos', 'de', 'Excelência'];
 
-export function HeroSection() {
+export function HeroSection({ marbles = [] }: { marbles?: Marble[] }) {
   const bgRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -38,6 +41,8 @@ export function HeroSection() {
     return () => ctx?.revert();
   }, []);
 
+  let letterIndex = 0;
+
   return (
     <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden">
       <div
@@ -49,18 +54,29 @@ export function HeroSection() {
         }}
       />
 
+      <HeroMarbleRoulette marbles={marbles} />
+
+      <div className="absolute inset-0 bg-marble-dark/50" />
+
       <div className="relative z-10 text-center px-6 max-w-3xl">
-        <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-balance">
-          {TITLE.split('').map((char, i) => (
-            <motion.span
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.02, duration: 0.4 }}
-              className={char === ' ' ? 'inline-block w-2' : 'inline-block text-white'}
-            >
-              {char}
-            </motion.span>
+        <h1 className="text-4xl sm:text-6xl font-bold tracking-tight">
+          {TITLE_WORDS.map((word, wi) => (
+            <span key={wi} className="inline-block whitespace-nowrap mr-[0.25em]">
+              {word.split('').map((char) => {
+                const i = letterIndex++;
+                return (
+                  <motion.span
+                    key={i}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.02, duration: 0.4 }}
+                    className="inline-block text-white"
+                  >
+                    {char}
+                  </motion.span>
+                );
+              })}
+            </span>
           ))}
         </h1>
         <motion.p
@@ -75,8 +91,17 @@ export function HeroSection() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.3, duration: 0.5 }}
-          className="mt-10"
+          transition={{ delay: 1.2, duration: 0.5 }}
+          className="mt-8"
+        >
+          <FloatingMarbleSlab />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.4, duration: 0.5 }}
+          className="mt-8"
         >
           <Link href="/orcamento">
             <span className="glass-panel inline-flex items-center px-8 py-4 text-marble-gold font-semibold hover:scale-105 transition-transform cursor-pointer">
@@ -89,7 +114,7 @@ export function HeroSection() {
       <motion.div
         animate={{ y: [0, 8, 0] }}
         transition={{ repeat: Infinity, duration: 1.6 }}
-        className="absolute bottom-8 text-white/40"
+        className="absolute bottom-8 text-white/40 z-10"
       >
         <ChevronDown size={28} />
       </motion.div>
