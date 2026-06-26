@@ -28,7 +28,6 @@ export default async function HomePage() {
       <RotatingMarbleSlab />
 
       <section className="py-16">
-        <h2 className="text-center text-white/50 text-sm uppercase tracking-widest mb-6">Nosso catálogo</h2>
         <ScrollingMarbles marbles={marbles} />
       </section>
 

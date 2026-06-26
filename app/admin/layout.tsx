@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useMe } from '@/lib/auth';
 import { useAuthStore } from '@/store/authStore';
 import { Sidebar } from '@/components/admin/Sidebar';
@@ -25,7 +26,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (isLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-marble-cream">
-        <p className="text-marble-gray text-sm">Carregando...</p>
+        <motion.p
+          animate={{ opacity: [0.4, 1, 0.4] }}
+          transition={{ repeat: Infinity, duration: 1.4 }}
+          className="text-marble-gray text-sm"
+        >
+          Carregando...
+        </motion.p>
       </div>
     );
   }
@@ -33,8 +40,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex">
       <Sidebar />
-      <main className="flex-1 min-h-screen bg-gray-50 overflow-y-auto">
-        <div className="p-6 max-w-7xl mx-auto">{children}</div>
+      <main className="flex-1 min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 overflow-y-auto">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="p-6 max-w-7xl mx-auto"
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );

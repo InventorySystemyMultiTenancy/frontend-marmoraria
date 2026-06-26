@@ -132,6 +132,8 @@ export function HeroSection() {
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/40 to-black/70" />
+        {/* Funde a base do vídeo na cor de fundo das próximas seções, em vez de um corte seco */}
+        <div className="absolute bottom-0 left-0 right-0 h-[35vh] bg-gradient-to-b from-transparent to-marble-dark" />
 
         <div className="relative z-10 h-full flex items-center justify-center px-6">
           <div className="relative max-w-3xl w-full text-center h-72">
