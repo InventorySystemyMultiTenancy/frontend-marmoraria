@@ -67,14 +67,28 @@ export function HeroSection() {
     const video = videoRef.current;
     if (!video) return;
 
-    const onLoadedMetadata = () => {
+    const markReady = () => {
+      if (durationReady) return;
       durationReady = Number.isFinite(video.duration) && video.duration > 0;
-      if (durationReady) {
-        video.currentTime = pendingProgress * video.duration;
+      if (!durationReady) return;
+
+      video.currentTime = pendingProgress * video.duration;
+
+      // iOS/Safari (e alguns Android) nao desenham nenhum frame num video pausado
+      // que nunca rodou — precisa "ligar e desligar" rapidamente para forcar a
+      // decodificacao do primeiro frame antes de poder usar currentTime visualmente.
+      const playPromise = video.play();
+      if (playPromise) {
+        playPromise.then(() => video.pause()).catch(() => {});
       }
     };
-    video.addEventListener('loadedmetadata', onLoadedMetadata);
-    video.pause();
+
+    video.addEventListener('loadedmetadata', markReady);
+    // Se o video ja veio do cache do navegador, o evento 'loadedmetadata' pode ja
+    // ter disparado antes deste listener ser anexado — checa o estado direto.
+    if (video.readyState >= 1) {
+      markReady();
+    }
 
     (async () => {
       const gsap = (await import('gsap')).default;
@@ -114,7 +128,7 @@ export function HeroSection() {
     })();
 
     return () => {
-      video.removeEventListener('loadedmetadata', onLoadedMetadata);
+      video.removeEventListener('loadedmetadata', markReady);
       cleanup?.();
     };
   }, [videoSrc]);
