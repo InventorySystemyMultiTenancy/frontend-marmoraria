@@ -64,7 +64,7 @@ export function Sidebar() {
       initial={{ x: -24, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.35, ease: 'easeOut' }}
-      className="w-60 shrink-0 h-screen bg-marble-dark text-white flex flex-col relative overflow-hidden"
+      className="w-60 shrink-0 h-screen bg-marble-dark text-white flex flex-col fixed overflow-hidden"
     >
       <div
         className="absolute inset-0 pointer-events-none opacity-40"
