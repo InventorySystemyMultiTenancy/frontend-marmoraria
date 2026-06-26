@@ -15,8 +15,12 @@ export const publicApi = axios.create({
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    if (typeof window !== 'undefined' && error?.response?.status === 401) {
-      window.location.href = '/login';
+    if (
+      typeof window !== 'undefined' &&
+      error?.response?.status === 401 &&
+      window.location.pathname !== '/admin/login'
+    ) {
+      window.location.href = '/admin/login';
     }
     return Promise.reject(error);
   }

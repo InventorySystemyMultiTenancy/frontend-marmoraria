@@ -11,11 +11,12 @@ export async function fetchMe(): Promise<User | null> {
   }
 }
 
-export function useMe() {
+export function useMe(enabled = true) {
   return useQuery({
     queryKey: ['me'],
     queryFn: fetchMe,
     retry: false,
+    enabled,
   });
 }
 
