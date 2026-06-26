@@ -31,9 +31,14 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
       <footer className="border-t border-white/10 px-6 sm:px-10 py-8 text-sm text-white/50 flex flex-col sm:flex-row justify-between gap-2">
         <p>© {new Date().getFullYear()} {COMPANY}. Todos os direitos reservados.</p>
-        <a href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noreferrer" className="hover:text-marble-gold">
-          Fale conosco no WhatsApp
-        </a>
+        <div className="flex items-center gap-4">
+          <a href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noreferrer" className="hover:text-marble-gold">
+            Fale conosco no WhatsApp
+          </a>
+          <Link href="/admin/login" className="hover:text-marble-gold">
+            Acesso administrativo
+          </Link>
+        </div>
       </footer>
     </div>
   );
