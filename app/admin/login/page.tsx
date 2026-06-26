@@ -45,7 +45,16 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-marble-cream px-4">
+    <div className="relative min-h-screen flex items-center justify-center px-4">
+      <Image
+        src="/loginpagebackground.png"
+        alt=""
+        fill
+        priority
+        className="object-cover -z-20"
+      />
+      <div className="absolute inset-0 bg-marble-cream/80 -z-10" />
+
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8">
         <div className="text-center mb-6">
           <Image src="/logo.png" alt="Logo" width={72} height={72} className="mx-auto mb-3 rounded-full" />
