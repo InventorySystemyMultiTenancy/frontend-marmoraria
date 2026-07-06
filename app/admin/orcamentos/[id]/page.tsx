@@ -35,12 +35,12 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-4 max-w-3xl">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-marble-dark">{data.quoteNumber}</h1>
           <p className="text-sm text-gray-500">{formatDate(data.createdAt)}</p>
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center flex-wrap">
           <Badge variant="gold">{QUOTE_STATUS_LABELS[data.status]}</Badge>
           <a href={`/api/pdf/quote/${data.id}`} target="_blank" rel="noreferrer">
             <Button variant="outline" size="sm"><Download size={14} /> PDF</Button>
@@ -49,12 +49,12 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
       </div>
 
       {canApprove && data.status === 'DRAFT' && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button size="sm" onClick={() => statusMutation.mutate('SENT')}>Marcar como enviado</Button>
         </div>
       )}
       {canApprove && (data.status === 'DRAFT' || data.status === 'SENT') && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="gold" onClick={() => statusMutation.mutate('APPROVED')}>
             <Check size={14} /> Aprovar
           </Button>
@@ -75,8 +75,8 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
 
       <Card>
         <CardHeader><CardTitle>Itens</CardTitle></CardHeader>
-        <CardContent className="p-0">
-          <table className="w-full text-sm">
+        <CardContent className="p-0 overflow-x-auto">
+          <table className="w-full text-sm min-w-[560px]">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
                 <th className="px-5 py-3 text-left font-medium text-gray-600">Mármore</th>

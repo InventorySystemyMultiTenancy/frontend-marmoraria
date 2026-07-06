@@ -87,9 +87,9 @@ export default function EstoquePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-2xl font-bold text-marble-dark">Estoque</h1>
-        <Button onClick={() => setShowForm(true)}>
+        <Button onClick={() => setShowForm(true)} className="self-start sm:self-auto">
           <Plus size={16} /> Nova entrada
         </Button>
       </div>
@@ -137,16 +137,16 @@ export default function EstoquePage() {
             </Select>
             {errors.marbleId && <p className="text-xs text-red-600 mt-1">{errors.marbleId.message}</p>}
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div><Label>Largura (cm) *</Label><Input type="number" step="0.1" {...register('widthCm')} /></div>
             <div><Label>Altura (cm) *</Label><Input type="number" step="0.1" {...register('heightCm')} /></div>
             <div><Label>Espessura (mm) *</Label><Input type="number" step="1" {...register('thicknessMm')} /></div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><Label>Nº do lote</Label><Input {...register('slabNumber')} /></div>
             <div><Label>Custo (R$)</Label><Input type="number" step="0.01" {...register('costPrice')} /></div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><Label>Localização</Label><Input {...register('location')} placeholder="Ex: Galpão A" /></div>
             <div>
               <Label>Status</Label>

@@ -104,9 +104,9 @@ export default function CatalogoAdminPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-2xl font-bold text-marble-dark">Catálogo de Mármores</h1>
-        <Button onClick={openCreate}>
+        <Button onClick={openCreate} className="self-start sm:self-auto">
           <Plus size={16} /> Novo mármore
         </Button>
       </div>
@@ -195,7 +195,7 @@ export default function CatalogoAdminPage() {
             <Label>Descrição</Label>
             <Textarea rows={2} {...register('description')} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Origem</Label>
               <Input {...register('origin')} placeholder="Ex: Brasil - MG" />
@@ -205,7 +205,7 @@ export default function CatalogoAdminPage() {
               <Input {...register('color')} />
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <Label>Tipo</Label>
               <Select {...register('type')}>
@@ -223,7 +223,7 @@ export default function CatalogoAdminPage() {
               <Input type="number" step="1" {...register('thickness')} />
             </div>
           </div>
-          <div className="flex gap-6 pt-1">
+          <div className="flex flex-wrap gap-6 pt-1">
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" {...register('isAvailable')} /> Disponível
             </label>

@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Menu } from 'lucide-react';
 import { useMe } from '@/lib/auth';
 import { useAuthStore } from '@/store/authStore';
 import { Sidebar } from '@/components/admin/Sidebar';
@@ -13,6 +14,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isLoginPage = pathname === '/admin/login';
   const { data: user, isLoading } = useMe(!isLoginPage);
   const setUser = useAuthStore((s) => s.setUser);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     setUser(user ?? null);
@@ -20,6 +22,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       router.replace('/admin/login');
     }
   }, [user, isLoading, isLoginPage, router, setUser]);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
   if (isLoginPage) return <>{children}</>;
 
@@ -39,21 +45,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex">
-      <Sidebar />
-      <main className="flex-1 min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 overflow-y-auto">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={pathname}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="p-6 max-w-7xl mx-auto"
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className="flex-1 min-w-0 min-h-screen flex flex-col">
+        <header className="md:hidden flex items-center gap-3 px-4 py-3 bg-marble-dark text-white shrink-0">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Abrir menu"
+            className="p-1 -ml-1 cursor-pointer"
           >
-            {children}
-          </motion.div>
-        </AnimatePresence>
-      </main>
+            <Menu size={22} />
+          </button>
+          <span className="text-sm font-semibold text-marble-gold">Painel administrativo</span>
+        </header>
+        <main className="flex-1 min-h-0 bg-gradient-to-br from-gray-50 to-gray-100 overflow-y-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="p-4 sm:p-6 max-w-7xl mx-auto"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
     </div>
   );
 }

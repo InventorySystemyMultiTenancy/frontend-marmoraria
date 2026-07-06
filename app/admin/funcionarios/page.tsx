@@ -83,9 +83,9 @@ export default function FuncionariosPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-2xl font-bold text-marble-dark">Funcionários</h1>
-        <Button onClick={() => setShowForm(true)}><Plus size={16} /> Novo funcionário</Button>
+        <Button onClick={() => setShowForm(true)} className="self-start sm:self-auto"><Plus size={16} /> Novo funcionário</Button>
       </div>
 
       <DataTable
@@ -157,7 +157,7 @@ export default function FuncionariosPage() {
             {PERMISSION_GROUPS.map((group) => (
               <div key={group.label}>
                 <h3 className="text-sm font-semibold text-marble-dark mb-2">{group.label}</h3>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {group.keys.map((key) => (
                     <label key={key} className="flex items-center gap-2 text-sm text-gray-700">
                       <input

@@ -33,9 +33,9 @@ export default function OrcamentosPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-2xl font-bold text-marble-dark">Orçamentos</h1>
-        <Link href="/admin/orcamentos/novo">
+        <Link href="/admin/orcamentos/novo" className="self-start sm:self-auto">
           <Button>
             <Plus size={16} /> Novo orçamento
           </Button>

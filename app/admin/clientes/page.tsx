@@ -89,10 +89,10 @@ export default function ClientesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-2xl font-bold text-marble-dark">Clientes</h1>
         {canCreate && (
-          <Button onClick={openCreate}>
+          <Button onClick={openCreate} className="self-start sm:self-auto">
             <Plus size={16} /> Novo cliente
           </Button>
         )}
@@ -148,7 +148,7 @@ export default function ClientesPage() {
             <Input {...register('name')} />
             {errors.name && <p className="text-xs text-red-600 mt-1">{errors.name.message}</p>}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Telefone</Label>
               <Input {...register('phone')} />
@@ -158,7 +158,7 @@ export default function ClientesPage() {
               <Input {...register('email')} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>CPF/CNPJ</Label>
               <Input {...register('cpfCnpj')} />

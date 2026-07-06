@@ -167,7 +167,7 @@ export function QuoteBuilder() {
       <Card>
         <CardHeader><CardTitle>Cliente</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex gap-4 text-sm">
+          <div className="flex flex-wrap gap-4 text-sm">
             <label className="flex items-center gap-2">
               <input type="radio" checked={useExistingClient} onChange={() => setUseExistingClient(true)} /> Cliente cadastrado
             </label>
@@ -184,7 +184,7 @@ export function QuoteBuilder() {
               ))}
             </Select>
           ) : (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div><Label>Nome *</Label><Input value={clientName} onChange={(e) => setClientName(e.target.value)} /></div>
               <div><Label>Telefone</Label><Input value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} /></div>
               <div><Label>Email</Label><Input value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} /></div>
@@ -194,18 +194,18 @@ export function QuoteBuilder() {
       </Card>
 
       <Card>
-        <CardHeader className="flex items-center justify-between flex-row">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <CardTitle>Itens do orçamento</CardTitle>
-          <Button size="sm" variant="outline" onClick={() => setItems((p) => [...p, { ...emptyItem, extras: [] }])}>
+          <Button size="sm" variant="outline" className="self-start sm:self-auto" onClick={() => setItems((p) => [...p, { ...emptyItem, extras: [] }])}>
             <Plus size={14} /> Adicionar item
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           {items.map((item, idx) => (
             <div key={idx} className="border border-gray-100 rounded-lg p-4 space-y-3">
-              <div className="flex justify-between items-start">
-                <div className="grid grid-cols-2 gap-3 flex-1">
-                  <div className="col-span-2">
+              <div className="flex justify-between items-start gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1">
+                  <div className="sm:col-span-2">
                     <Label>Mármore</Label>
                     <Select value={item.marbleId} onChange={(e) => updateItem(idx, { marbleId: e.target.value })}>
                       <option value="">Selecione...</option>
@@ -217,7 +217,7 @@ export function QuoteBuilder() {
                     </Select>
                   </div>
                   <div><Label>Descrição</Label><Input value={item.description} onChange={(e) => updateItem(idx, { description: e.target.value })} placeholder="Ex: Pia 2.00x0.60 com instalação" /></div>
-                  <div className="grid grid-cols-4 gap-2 col-span-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:col-span-2">
                     <div><Label>Comprimento (cm)</Label><Input type="number" value={item.widthCm} onChange={(e) => updateItem(idx, { widthCm: e.target.value })} /></div>
                     <div><Label>Profundidade (cm)</Label><Input type="number" value={item.heightCm} onChange={(e) => updateItem(idx, { heightCm: e.target.value })} /></div>
                     <div><Label>Espessura (mm)</Label><Input type="number" value={item.thicknessMm} onChange={(e) => updateItem(idx, { thicknessMm: e.target.value })} /></div>
@@ -225,7 +225,7 @@ export function QuoteBuilder() {
                   </div>
                 </div>
                 {items.length > 1 && (
-                  <button onClick={() => setItems((p) => p.filter((_, i) => i !== idx))} className="ml-3 text-gray-400 hover:text-red-600 cursor-pointer">
+                  <button onClick={() => setItems((p) => p.filter((_, i) => i !== idx))} className="ml-1 sm:ml-3 shrink-0 text-gray-400 hover:text-red-600 cursor-pointer">
                     <Trash2 size={16} />
                   </button>
                 )}
@@ -239,21 +239,21 @@ export function QuoteBuilder() {
                   </button>
                 </div>
                 {item.extras.map((extra, exIdx) => (
-                  <div key={exIdx} className="flex gap-2 items-center">
+                  <div key={exIdx} className="flex flex-wrap sm:flex-nowrap gap-2 items-center">
                     <Input
                       placeholder="Nome (ex: Cuba de inox)"
                       value={extra.name}
                       onChange={(e) => updateExtra(idx, exIdx, { name: e.target.value })}
-                      className="flex-1"
+                      className="flex-1 min-w-[140px]"
                     />
                     <Input
                       type="number"
                       placeholder="Valor (R$)"
                       value={extra.price}
                       onChange={(e) => updateExtra(idx, exIdx, { price: e.target.value })}
-                      className="w-32"
+                      className="w-full sm:w-32"
                     />
-                    <button onClick={() => removeExtra(idx, exIdx)} className="text-gray-400 hover:text-red-600 cursor-pointer">
+                    <button onClick={() => removeExtra(idx, exIdx)} className="text-gray-400 hover:text-red-600 cursor-pointer shrink-0">
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -271,11 +271,11 @@ export function QuoteBuilder() {
       <Card>
         <CardHeader><CardTitle>Desconto, frete e observações</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><Label>Desconto (R$)</Label><Input type="number" value={discount} onChange={(e) => setDiscount(e.target.value)} /></div>
             <div><Label>Desconto (%)</Label><Input type="number" value={discountPct} onChange={(e) => setDiscountPct(e.target.value)} /></div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <Label>Distância (km)</Label>
               <Input type="number" value={freightDistanceKm} onChange={(e) => setFreightDistanceKm(e.target.value)} />
@@ -299,15 +299,15 @@ export function QuoteBuilder() {
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 p-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white rounded-xl border border-gray-200 p-5">
         <div>
           <p className="text-sm text-gray-500">Subtotal: {formatCurrency(subtotal)}</p>
           {computedFreight > 0 && <p className="text-sm text-gray-500">Frete: {formatCurrency(computedFreight)}</p>}
           <p className="text-xl font-bold text-marble-dark">Total: {formatCurrency(total)}</p>
         </div>
-        <div className="text-right">
+        <div className="text-left sm:text-right">
           {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
-          <Button onClick={handleSubmit} disabled={createMutation.isPending} size="lg">
+          <Button onClick={handleSubmit} disabled={createMutation.isPending} size="lg" className="w-full sm:w-auto">
             {createMutation.isPending ? 'Salvando...' : 'Salvar orçamento'}
           </Button>
         </div>

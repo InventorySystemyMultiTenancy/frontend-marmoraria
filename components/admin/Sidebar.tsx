@@ -40,7 +40,7 @@ const NAV_ITEMS: {
   { href: '/admin/formula', label: 'Fórmula', icon: Sigma },
 ];
 
-export function Sidebar() {
+export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -60,12 +60,20 @@ export function Sidebar() {
   );
 
   return (
-    <motion.aside
-      initial={{ x: -24, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={{ duration: 0.35, ease: 'easeOut' }}
-      className="w-60 shrink-0 h-screen bg-marble-dark text-white flex flex-col overflow-hidden"
-    >
+    <>
+      {open && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={cn(
+          'w-60 shrink-0 h-screen bg-marble-dark text-white flex flex-col overflow-hidden fixed inset-y-0 left-0 z-50 transition-transform duration-300 md:static md:z-auto md:translate-x-0',
+          open ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
       <div
         className="absolute inset-0 pointer-events-none opacity-40"
         style={{
@@ -90,6 +98,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onClose}
               className={cn(
                 'relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
                 active ? 'text-marble-dark font-medium' : 'text-white/70 hover:bg-white/10'
@@ -122,6 +131,7 @@ export function Sidebar() {
           Sair
         </button>
       </div>
-    </motion.aside>
+      </aside>
+    </>
   );
 }

@@ -73,9 +73,9 @@ export default function FinanceiroPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-2xl font-bold text-marble-dark">Financeiro</h1>
-        <Button onClick={() => setShowForm(true)}><Plus size={16} /> Novo lançamento</Button>
+        <Button onClick={() => setShowForm(true)} className="self-start sm:self-auto"><Plus size={16} /> Novo lançamento</Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
@@ -134,7 +134,7 @@ export default function FinanceiroPage() {
             <Input {...register('description')} />
             {errors.description && <p className="text-xs text-red-600 mt-1">{errors.description.message}</p>}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Valor (R$) *</Label>
               <Input type="number" step="0.01" {...register('amount')} />

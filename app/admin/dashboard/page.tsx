@@ -144,8 +144,8 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle>Últimos orçamentos</CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
-            <table className="w-full text-sm">
+          <CardContent className="p-0 overflow-x-auto">
+            <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
                   <th className="px-5 py-3 text-left font-medium text-gray-600">Número</th>
