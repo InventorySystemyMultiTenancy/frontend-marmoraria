@@ -30,7 +30,7 @@ async function proxy(req: NextRequest, segments: string[]) {
   }
 
   const buffer = await backendRes.arrayBuffer();
-  return new NextResponse(buffer, {
+  return new NextResponse(new Uint8Array(buffer), {
     status: backendRes.status,
     headers: {
       'content-type': resContentType,
