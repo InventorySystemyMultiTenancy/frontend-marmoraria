@@ -141,7 +141,7 @@ export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
 export interface QuoteItem {
   id: string;
   marbleId: string;
-  marble?: { name: string; imageUrls?: string[] };
+  marble?: { name: string; imageUrls?: string[]; pricePerM2?: number | null };
   description?: string | null;
   widthCm: number;
   heightCm: number;

@@ -100,7 +100,12 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
                   <td className="px-5 py-3">{item.widthCm}x{item.heightCm}cm ({item.thicknessMm}mm)</td>
                   <td className="px-5 py-3">{item.areaM2.toFixed(2)} m²</td>
                   <td className="px-5 py-3">{item.quantity}</td>
-                  <td className="px-5 py-3">{formatCurrency(item.totalPrice)}</td>
+                  <td className="px-5 py-3">
+                    {formatCurrency(item.totalPrice)}
+                    {item.marble?.pricePerM2 == null && (
+                      <div className="text-xs text-gray-400 mt-0.5">Aproximadamente (preço sob consulta)</div>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

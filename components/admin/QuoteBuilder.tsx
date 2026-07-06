@@ -262,6 +262,9 @@ export function QuoteBuilder() {
 
               <p className="text-sm text-right text-marble-gray">
                 Subtotal do item: <span className="font-semibold text-marble-dark">{formatCurrency(calcItemTotal(item))}</span>
+                {item.marbleId && marbles.find((m) => m.id === item.marbleId)?.pricePerM2 == null && (
+                  <span className="block text-xs text-marble-gray/70">Aproximadamente (preço sob consulta)</span>
+                )}
               </p>
             </div>
           ))}
