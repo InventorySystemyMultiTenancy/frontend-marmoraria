@@ -16,6 +16,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         <nav className="hidden sm:flex items-center gap-8 text-sm text-white/80">
           <Link href="/catalogo" className="hover:text-marble-gold transition-colors">Catálogo</Link>
           <Link href="/orcamento" className="hover:text-marble-gold transition-colors">Orçamento</Link>
+          <Link href="/acompanhar-pedido" className="hover:text-marble-gold transition-colors">Acompanhar Pedido</Link>
         </nav>
         <a
           href={`https://wa.me/${WHATSAPP}`}

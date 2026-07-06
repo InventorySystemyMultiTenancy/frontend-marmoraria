@@ -16,6 +16,7 @@ import {
   UserCog,
   Sigma,
   LogOut,
+  Home,
 } from 'lucide-react';
 import { logout } from '@/lib/auth';
 import { useAuthStore } from '@/store/authStore';
@@ -88,6 +89,16 @@ export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: (
           <h1 className="text-sm font-bold text-marble-gold leading-tight">Marmoraria Pedras Pedroza</h1>
           <p className="text-xs text-white/50 mt-0.5">Painel administrativo</p>
         </div>
+      </div>
+
+      <div className="px-3 pt-3 relative z-10">
+        <Link
+          href="/"
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+        >
+          <Home size={18} />
+          Voltar ao site
+        </Link>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto relative z-10">
