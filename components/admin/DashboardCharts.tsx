@@ -86,6 +86,7 @@ const STATUS_COLORS: Record<string, string> = {
   APPROVED: '#16a34a',
   REJECTED: '#dc2626',
   EXPIRED: '#f59e0b',
+  CANCELLED: '#dc2626',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -94,6 +95,7 @@ const STATUS_LABELS: Record<string, string> = {
   APPROVED: 'Aprovado',
   REJECTED: 'Rejeitado',
   EXPIRED: 'Expirado',
+  CANCELLED: 'Cancelado',
 };
 
 export function QuotesStatusDonut({ data }: { data: { status: string; count: number }[] }) {

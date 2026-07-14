@@ -18,6 +18,7 @@ const STATUS_VARIANT: Record<QuoteStatus, 'success' | 'warning' | 'default' | 'd
   APPROVED: 'success',
   REJECTED: 'danger',
   EXPIRED: 'warning',
+  CANCELLED: 'danger',
 };
 
 export default function OrcamentosPage() {

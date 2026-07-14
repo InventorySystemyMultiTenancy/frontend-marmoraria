@@ -43,6 +43,7 @@ export function QuoteBuilder() {
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
+  const [clientCpfCnpj, setClientCpfCnpj] = useState('');
   const [discount, setDiscount] = useState('0');
   const [discountPct, setDiscountPct] = useState('0');
   const [freightDistanceKm, setFreightDistanceKm] = useState('');
@@ -121,6 +122,7 @@ export function QuoteBuilder() {
         clientName: !useExistingClient ? clientName : undefined,
         clientPhone: !useExistingClient ? clientPhone : undefined,
         clientEmail: !useExistingClient ? clientEmail || undefined : undefined,
+        clientCpfCnpj,
         items: items.map((i) => ({
           marbleId: i.marbleId,
           description: i.description || undefined,
@@ -155,6 +157,10 @@ export function QuoteBuilder() {
       setError('Selecione um cliente.');
       return;
     }
+    if (!clientCpfCnpj) {
+      setError('Informe o CPF ou CNPJ do cliente.');
+      return;
+    }
     if (items.some((i) => !i.marbleId || !i.widthCm || !i.heightCm)) {
       setError('Preencha mármore, largura e altura de todos os itens.');
       return;
@@ -177,17 +183,33 @@ export function QuoteBuilder() {
           </div>
 
           {useExistingClient ? (
-            <Select value={clientId} onChange={(e) => setClientId(e.target.value)}>
-              <option value="">Selecione...</option>
-              {clientsData?.clients.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </Select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="sm:col-span-2">
+                <Select
+                  value={clientId}
+                  onChange={(e) => {
+                    setClientId(e.target.value);
+                    const selected = clientsData?.clients.find((c) => c.id === e.target.value);
+                    setClientCpfCnpj(selected?.cpfCnpj ?? '');
+                  }}
+                >
+                  <option value="">Selecione...</option>
+                  {clientsData?.clients.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <Label>CPF ou CNPJ *</Label>
+                <Input value={clientCpfCnpj} onChange={(e) => setClientCpfCnpj(e.target.value)} placeholder="000.000.000-00" />
+              </div>
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div><Label>Nome *</Label><Input value={clientName} onChange={(e) => setClientName(e.target.value)} /></div>
               <div><Label>Telefone</Label><Input value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} /></div>
               <div><Label>Email</Label><Input value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} /></div>
+              <div><Label>CPF ou CNPJ *</Label><Input value={clientCpfCnpj} onChange={(e) => setClientCpfCnpj(e.target.value)} placeholder="000.000.000-00" /></div>
             </div>
           )}
         </CardContent>

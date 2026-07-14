@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Shield, Ban } from 'lucide-react';
 import { api } from '@/lib/api';
-import { User, UserRole, PERMISSION_GROUPS, UserPermissions } from '@/types';
+import { User, UserRole, PERMISSION_GROUPS, PERMISSION_LABELS, UserPermissions } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input, Label, Select } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
@@ -165,7 +165,7 @@ export default function FuncionariosPage() {
                         checked={perms[key]}
                         onChange={(e) => setPerms({ ...perms, [key]: e.target.checked })}
                       />
-                      {key}
+                      {PERMISSION_LABELS[key]}
                     </label>
                   ))}
                 </div>

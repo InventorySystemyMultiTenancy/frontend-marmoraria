@@ -51,6 +51,38 @@ export const PERMISSION_GROUPS: { label: string; keys: (keyof UserPermissions)[]
   { label: 'Funcionários', keys: ['users_view', 'users_create', 'users_edit', 'users_set_permissions'] },
 ];
 
+export const PERMISSION_LABELS: Record<keyof UserPermissions, string> = {
+  clients_view: 'Visualizar clientes',
+  clients_create: 'Cadastrar clientes',
+  clients_edit: 'Editar clientes',
+  clients_delete: 'Excluir clientes',
+  quotes_view: 'Visualizar orçamentos',
+  quotes_create: 'Criar orçamentos',
+  quotes_edit: 'Editar orçamentos',
+  quotes_delete: 'Excluir orçamentos',
+  quotes_approve: 'Aprovar/rejeitar orçamentos',
+  quotes_pdf: 'Gerar PDF de orçamentos',
+  orders_view: 'Visualizar pedidos',
+  orders_create: 'Criar pedidos',
+  orders_update_status: 'Atualizar status de pedidos',
+  orders_view_costs: 'Visualizar custos de produção',
+  stock_view: 'Visualizar estoque',
+  stock_edit: 'Editar estoque',
+  stock_add: 'Adicionar entradas ao estoque',
+  financial_view: 'Visualizar financeiro',
+  financial_create: 'Criar lançamentos financeiros',
+  financial_edit: 'Editar lançamentos financeiros',
+  financial_reports: 'Visualizar relatórios financeiros',
+  marbles_view: 'Visualizar catálogo de mármores',
+  marbles_edit: 'Editar mármores',
+  marbles_create: 'Cadastrar mármores',
+  marbles_delete: 'Excluir mármores',
+  users_view: 'Visualizar funcionários',
+  users_create: 'Cadastrar funcionários',
+  users_edit: 'Editar funcionários',
+  users_set_permissions: 'Definir permissões de funcionários',
+};
+
 export interface User {
   id: string;
   name: string;
@@ -127,7 +159,7 @@ export interface Client {
   quotes?: Quote[];
 }
 
-export type QuoteStatus = 'DRAFT' | 'SENT' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+export type QuoteStatus = 'DRAFT' | 'SENT' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'CANCELLED';
 export type QuoteSource = 'ADMIN' | 'SELF_SERVICE';
 
 export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
@@ -136,6 +168,7 @@ export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
   APPROVED: 'Aprovado',
   REJECTED: 'Rejeitado',
   EXPIRED: 'Expirado',
+  CANCELLED: 'Cancelado',
 };
 
 export interface QuoteItem {
@@ -157,10 +190,11 @@ export interface Quote {
   id: string;
   quoteNumber: string;
   clientId?: string | null;
-  client?: { name: string } | null;
+  client?: Client | null;
   clientName?: string | null;
   clientPhone?: string | null;
   clientEmail?: string | null;
+  clientCpfCnpj?: string | null;
   createdBy?: { name: string };
   status: QuoteStatus;
   items: QuoteItem[];
@@ -196,6 +230,15 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   CANCELLED: 'Cancelado',
 };
 
+export interface OrderStage {
+  id: string;
+  stageName: string;
+  status: string;
+  notes?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+}
+
 export interface Order {
   id: string;
   orderNumber: string;
@@ -210,6 +253,7 @@ export interface Order {
   productionNotes?: string | null;
   materialCost?: number | null;
   laborCost?: number | null;
+  stages?: OrderStage[];
   createdAt: string;
 }
 

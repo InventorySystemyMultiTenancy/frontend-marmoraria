@@ -26,6 +26,7 @@ export function QuoteForm() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [cpfCnpj, setCpfCnpj] = useState('');
   const [quoteId, setQuoteId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,6 +47,7 @@ export function QuoteForm() {
         clientName: name,
         clientPhone: phone,
         clientEmail: email || undefined,
+        clientCpfCnpj: cpfCnpj,
         source: 'SELF_SERVICE',
         items: [
           { marbleId, widthCm: Number(width), heightCm: Number(height), thicknessMm: Number(thickness), quantity: Number(quantity) },
@@ -66,6 +68,7 @@ export function QuoteForm() {
     if (step === 1 && (!width || !height)) return setError('Informe largura e altura.');
     if (step === 2) {
       if (!name || !phone) return setError('Informe seu nome e telefone.');
+      if (!cpfCnpj) return setError('Informe seu CPF ou CNPJ.');
       submitMutation.mutate();
       return;
     }
@@ -150,6 +153,7 @@ export function QuoteForm() {
               <div className="space-y-4">
                 <Field label="Nome completo" value={name} onChange={setName} />
                 <Field label="Telefone / WhatsApp" value={phone} onChange={setPhone} />
+                <Field label="CPF ou CNPJ" value={cpfCnpj} onChange={setCpfCnpj} placeholder="000.000.000-00" />
                 <Field label="Email (opcional)" value={email} onChange={setEmail} />
               </div>
             </div>
@@ -205,13 +209,24 @@ export function QuoteForm() {
   );
 }
 
-function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
   return (
     <div>
       <label className="text-sm text-white/60 mb-1 block">{label}</label>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
         className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-marble-gold"
       />
     </div>

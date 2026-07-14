@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Order, OrderStatus, ORDER_STATUS_LABELS } from '@/types';
@@ -42,7 +43,12 @@ export default function PedidosPage() {
                 .map((order) => (
                   <Card key={order.id}>
                     <CardContent className="p-3 space-y-2">
-                      <p className="text-sm font-semibold text-marble-dark">{order.orderNumber}</p>
+                      <Link
+                        href={`/admin/pedidos/${order.id}`}
+                        className="text-sm font-semibold text-marble-dark hover:text-marble-gold hover:underline block"
+                      >
+                        {order.orderNumber}
+                      </Link>
                       <p className="text-xs text-gray-500">{order.quote?.client?.name ?? '-'}</p>
                       <p className="text-xs text-gray-500">{formatCurrency(order.quote?.total ?? 0)}</p>
                       {order.estimatedDate && (
