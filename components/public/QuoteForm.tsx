@@ -46,6 +46,7 @@ export function QuoteForm() {
 
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [userDescription, setUserDescription] = useState('');
   const [aiResult, setAiResult] = useState<AiRecommendationResult | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const [dimensionsFromAi, setDimensionsFromAi] = useState(false);
@@ -66,6 +67,7 @@ export function QuoteForm() {
       if (!photoFile) throw new Error('no-file');
       const formData = new FormData();
       formData.append('photo', photoFile);
+      if (userDescription.trim()) formData.append('userDescription', userDescription.trim());
       const { data } = await publicApi.post('/api/ai/recommend-marble', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -208,14 +210,30 @@ export function QuoteForm() {
                   </div>
 
                   {!aiResult && (
-                    <button
-                      onClick={() => aiMutation.mutate()}
-                      disabled={aiMutation.isPending}
-                      className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-marble-gold text-marble-dark font-semibold cursor-pointer disabled:opacity-50"
-                    >
-                      <Sparkles size={16} />
-                      {aiMutation.isPending ? 'Analisando foto...' : 'Analisar com IA'}
-                    </button>
+                    <>
+                      <div>
+                        <label className="text-sm text-white/60 mb-1 block">
+                          O que você deseja fazer? (opcional)
+                        </label>
+                        <textarea
+                          value={userDescription}
+                          onChange={(e) => setUserDescription(e.target.value)}
+                          placeholder="Ex: quero trocar a bancada da cozinha por um mármore mais claro"
+                          rows={2}
+                          maxLength={500}
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-marble-gold resize-none"
+                        />
+                      </div>
+
+                      <button
+                        onClick={() => aiMutation.mutate()}
+                        disabled={aiMutation.isPending}
+                        className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-marble-gold text-marble-dark font-semibold cursor-pointer disabled:opacity-50"
+                      >
+                        <Sparkles size={16} />
+                        {aiMutation.isPending ? 'Analisando foto...' : 'Analisar com IA'}
+                      </button>
+                    </>
                   )}
 
                   {aiError && <p className="text-red-400 text-sm">{aiError}</p>}
@@ -261,9 +279,9 @@ export function QuoteForm() {
 
               <button
                 onClick={() => setStep(1)}
-                className="text-white/50 hover:text-white text-sm mt-6 cursor-pointer underline underline-offset-4"
+                className="w-full mt-8 px-6 py-4 rounded-full border-2 border-white/25 text-white text-base font-semibold hover:border-marble-gold hover:text-marble-gold transition-colors cursor-pointer"
               >
-                Pular esta etapa, vou escolher manualmente
+                Pular esta etapa, vou escolher o mármore manualmente
               </button>
             </div>
           )}
