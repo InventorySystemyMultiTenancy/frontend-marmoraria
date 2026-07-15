@@ -148,10 +148,10 @@ export function HeroSection() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/40 to-black/70" />
         {/* Encobre a marca d'agua do gerador de IA no canto inferior direito do video */}
         <div
-          className="absolute bottom-0 right-0 w-48 h-24 sm:w-64 sm:h-32 pointer-events-none"
+          className="absolute bottom-0 right-0 w-72 h-40 sm:w-[28rem] sm:h-56 pointer-events-none"
           style={{
             background:
-              'radial-gradient(ellipse at bottom right, rgba(26,22,20,0.95) 0%, rgba(26,22,20,0.8) 45%, rgba(26,22,20,0) 75%)',
+              'radial-gradient(ellipse at bottom right, rgba(26,22,20,1) 0%, rgba(26,22,20,1) 40%, rgba(26,22,20,0.95) 60%, rgba(26,22,20,0) 90%)',
           }}
         />
 

@@ -1,12 +1,14 @@
 'use client';
 
-import { use } from 'react';
+import { use, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Download, Check, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Quote, QuoteStatus, QUOTE_STATUS_LABELS } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input, Label } from '@/components/ui/input';
+import { Dialog } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
@@ -17,14 +19,30 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
 
+  const [showCpfDialog, setShowCpfDialog] = useState(false);
+  const [cpfInput, setCpfInput] = useState('');
+  const [cpfDialogError, setCpfDialogError] = useState<string | null>(null);
+
   const { data, isLoading } = useQuery({
     queryKey: ['quote', id],
     queryFn: async () => (await api.get(`/quotes/${id}`)).data.quote as Quote,
   });
 
   const statusMutation = useMutation({
-    mutationFn: async (status: QuoteStatus) => api.patch(`/quotes/${id}/status`, { status }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['quote', id] }),
+    mutationFn: async (payload: { status: QuoteStatus; clientCpfCnpj?: string }) =>
+      api.patch(`/quotes/${id}/status`, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quote', id] });
+      setShowCpfDialog(false);
+      setCpfInput('');
+      setCpfDialogError(null);
+    },
+    onError: (error: unknown) => {
+      const message =
+        (error as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+        'Não foi possível concluir a ação.';
+      if (showCpfDialog) setCpfDialogError(message);
+    },
   });
 
   if (isLoading || !data) {
@@ -32,6 +50,24 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
   }
 
   const canApprove = hasPermission(user, 'quotes_approve');
+  const hasCpfCnpj = Boolean(data.clientCpfCnpj || data.client?.cpfCnpj);
+
+  function handleApproveClick() {
+    if (hasCpfCnpj) {
+      statusMutation.mutate({ status: 'APPROVED' });
+      return;
+    }
+    setCpfDialogError(null);
+    setShowCpfDialog(true);
+  }
+
+  function confirmCpfAndApprove() {
+    if (!cpfInput.trim()) {
+      setCpfDialogError('Informe o CPF ou CNPJ do cliente.');
+      return;
+    }
+    statusMutation.mutate({ status: 'APPROVED', clientCpfCnpj: cpfInput.trim() });
+  }
 
   return (
     <div className="space-y-4 max-w-3xl">
@@ -50,15 +86,15 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
 
       {canApprove && data.status === 'DRAFT' && (
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={() => statusMutation.mutate('SENT')}>Marcar como enviado</Button>
+          <Button size="sm" onClick={() => statusMutation.mutate({ status: 'SENT' })}>Marcar como enviado</Button>
         </div>
       )}
       {canApprove && (data.status === 'DRAFT' || data.status === 'SENT') && (
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="gold" onClick={() => statusMutation.mutate('APPROVED')}>
+          <Button size="sm" variant="gold" onClick={handleApproveClick}>
             <Check size={14} /> Aprovar
           </Button>
-          <Button size="sm" variant="destructive" onClick={() => statusMutation.mutate('REJECTED')}>
+          <Button size="sm" variant="destructive" onClick={() => statusMutation.mutate({ status: 'REJECTED' })}>
             <X size={14} /> Rejeitar
           </Button>
         </div>
@@ -70,6 +106,7 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
           <p><strong>Nome:</strong> {data.client?.name ?? data.clientName ?? '-'}</p>
           <p><strong>Telefone:</strong> {data.clientPhone ?? '-'}</p>
           <p><strong>Email:</strong> {data.clientEmail ?? '-'}</p>
+          <p><strong>CPF/CNPJ:</strong> {data.clientCpfCnpj ?? data.client?.cpfCnpj ?? '-'}</p>
         </CardContent>
       </Card>
 
@@ -133,6 +170,22 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
           <CardContent className="text-sm">{data.notes}</CardContent>
         </Card>
       )}
+
+      <Dialog open={showCpfDialog} onClose={() => setShowCpfDialog(false)}>
+        <h2 className="text-lg font-semibold text-marble-dark mb-1">CPF ou CNPJ do cliente</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Esse orçamento foi criado sem CPF/CNPJ. Informe agora para que o cliente consiga rastrear o pedido depois de aprovado.
+        </p>
+        <Label>CPF ou CNPJ *</Label>
+        <Input value={cpfInput} onChange={(e) => setCpfInput(e.target.value)} placeholder="000.000.000-00" />
+        {cpfDialogError && <p className="text-xs text-red-600 mt-1">{cpfDialogError}</p>}
+        <div className="flex justify-end gap-2 pt-4">
+          <Button variant="outline" onClick={() => setShowCpfDialog(false)}>Cancelar</Button>
+          <Button variant="gold" onClick={confirmCpfAndApprove} disabled={statusMutation.isPending}>
+            {statusMutation.isPending ? 'Aprovando...' : 'Confirmar e aprovar'}
+          </Button>
+        </div>
+      </Dialog>
     </div>
   );
 }

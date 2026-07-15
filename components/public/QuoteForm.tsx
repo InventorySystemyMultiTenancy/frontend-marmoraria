@@ -132,7 +132,6 @@ export function QuoteForm() {
     if (step === 2 && (!width || !height)) return setError('Informe largura e altura.');
     if (step === 3) {
       if (!name || !phone) return setError('Informe seu nome e telefone.');
-      if (!cpfCnpj) return setError('Informe seu CPF ou CNPJ.');
       submitMutation.mutate();
       return;
     }
@@ -344,7 +343,15 @@ export function QuoteForm() {
               <div className="space-y-4">
                 <Field label="Nome completo" value={name} onChange={setName} />
                 <Field label="Telefone / WhatsApp" value={phone} onChange={setPhone} />
-                <Field label="CPF ou CNPJ" value={cpfCnpj} onChange={setCpfCnpj} placeholder="000.000.000-00" />
+                <Field
+                  label="CPF ou CNPJ (opcional)"
+                  value={cpfCnpj}
+                  onChange={setCpfCnpj}
+                  placeholder="000.000.000-00"
+                />
+                <p className="text-xs text-white/40 -mt-3">
+                  Usado para você rastrear o pedido depois. Se não informar agora, pode ser solicitado na aprovação do orçamento.
+                </p>
                 <Field label="Email (opcional)" value={email} onChange={setEmail} />
               </div>
             </div>

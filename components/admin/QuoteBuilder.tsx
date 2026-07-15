@@ -157,10 +157,6 @@ export function QuoteBuilder() {
       setError('Selecione um cliente.');
       return;
     }
-    if (!clientCpfCnpj) {
-      setError('Informe o CPF ou CNPJ do cliente.');
-      return;
-    }
     if (items.some((i) => !i.marbleId || !i.widthCm || !i.heightCm)) {
       setError('Preencha mármore, largura e altura de todos os itens.');
       return;
@@ -200,7 +196,7 @@ export function QuoteBuilder() {
                 </Select>
               </div>
               <div>
-                <Label>CPF ou CNPJ *</Label>
+                <Label>CPF ou CNPJ</Label>
                 <Input value={clientCpfCnpj} onChange={(e) => setClientCpfCnpj(e.target.value)} placeholder="000.000.000-00" />
               </div>
             </div>
@@ -209,9 +205,12 @@ export function QuoteBuilder() {
               <div><Label>Nome *</Label><Input value={clientName} onChange={(e) => setClientName(e.target.value)} /></div>
               <div><Label>Telefone</Label><Input value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} /></div>
               <div><Label>Email</Label><Input value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} /></div>
-              <div><Label>CPF ou CNPJ *</Label><Input value={clientCpfCnpj} onChange={(e) => setClientCpfCnpj(e.target.value)} placeholder="000.000.000-00" /></div>
+              <div><Label>CPF ou CNPJ</Label><Input value={clientCpfCnpj} onChange={(e) => setClientCpfCnpj(e.target.value)} placeholder="000.000.000-00" /></div>
             </div>
           )}
+          <p className="text-xs text-gray-400">
+            Opcional aqui — usado para o cliente rastrear o pedido depois. Se não informar agora, será pedido na aprovação do orçamento.
+          </p>
         </CardContent>
       </Card>
 
