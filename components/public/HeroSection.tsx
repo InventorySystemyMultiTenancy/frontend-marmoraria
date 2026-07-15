@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ChevronDown } from 'lucide-react';
 import { useIsMobile } from '@/lib/useIsMobile';
 
@@ -146,14 +147,16 @@ export function HeroSection() {
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/40 to-black/70" />
-        {/* Encobre a marca d'agua do gerador de IA no canto inferior direito do video */}
-        <div
-          className="absolute bottom-0 right-0 w-56 h-32 sm:w-80 sm:h-48 pointer-events-none"
-          style={{
-            background:
-              'radial-gradient(ellipse 65% 65% at bottom right, rgba(26,22,20,0.98) 0%, rgba(26,22,20,0.9) 18%, rgba(26,22,20,0.7) 36%, rgba(26,22,20,0.45) 54%, rgba(26,22,20,0.22) 72%, rgba(26,22,20,0.06) 88%, rgba(26,22,20,0) 100%)',
-          }}
-        />
+        {/* Encobre a marca d'agua do gerador de IA no canto inferior direito do video, com a logo (mesmo tamanho do navbar) */}
+        <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 pointer-events-none">
+          <Image
+            src="/logo.png"
+            alt=""
+            width={40}
+            height={40}
+            className="rounded-full ring-2 ring-marble-gold/30 shadow-lg shadow-black/50"
+          />
+        </div>
 
         <div className="relative z-10 h-full flex items-center justify-center px-6">
           <div className="relative max-w-3xl w-full text-center h-72">
