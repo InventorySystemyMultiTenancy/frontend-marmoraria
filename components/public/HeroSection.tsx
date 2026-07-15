@@ -146,6 +146,14 @@ export function HeroSection() {
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/40 to-black/70" />
+        {/* Encobre a marca d'agua do gerador de IA no canto inferior direito do video */}
+        <div
+          className="absolute bottom-0 right-0 w-48 h-24 sm:w-64 sm:h-32 pointer-events-none"
+          style={{
+            background:
+              'radial-gradient(ellipse at bottom right, rgba(26,22,20,0.95) 0%, rgba(26,22,20,0.8) 45%, rgba(26,22,20,0) 75%)',
+          }}
+        />
 
         <div className="relative z-10 h-full flex items-center justify-center px-6">
           <div className="relative max-w-3xl w-full text-center h-72">
