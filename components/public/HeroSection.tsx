@@ -148,13 +148,13 @@ export function HeroSection() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/40 to-black/70" />
         {/* Encobre a marca d'agua do gerador de IA no canto inferior direito do video, com a logo (mesmo tamanho do navbar) */}
-        <div className="absolute bottom-10 right-10 sm:bottom-14 sm:right-14 pointer-events-none">
-          <div className="absolute inset-0 -m-7 rounded-full bg-marble-dark/95 blur-lg" />
+        <div className="absolute bottom-10 right-16 sm:bottom-14 sm:right-32 pointer-events-none">
+          <div className="absolute inset-0 -m-8 rounded-full bg-marble-dark/95 blur-lg" />
           <Image
             src="/logo.png"
             alt=""
-            width={40}
-            height={40}
+            width={52}
+            height={52}
             className="relative rounded-full ring-2 ring-marble-gold/30 shadow-lg shadow-black/50"
           />
         </div>
