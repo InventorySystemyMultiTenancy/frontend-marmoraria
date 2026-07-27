@@ -5,12 +5,13 @@ import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Camera, Sparkles, X } from 'lucide-react';
+import { Check, Camera, Sparkles, X, Plus, Trash2, Pencil } from 'lucide-react';
 import { publicApi } from '@/lib/api';
-import { Marble, MARBLE_TYPE_LABELS } from '@/types';
+import { Company, Marble } from '@/types';
 import { formatCurrency } from '@/lib/utils';
+import { calcPieceBreakdown } from '@/lib/pricing';
 
-const STEPS = ['Foto (opcional)', 'Mármore', 'Medidas', 'Seus dados', 'Resultado'];
+const STEPS = ['Foto (opcional)', 'Peças', 'Seus dados', 'Resultado'];
 const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
 
 interface AiRecommendation {
@@ -26,17 +27,58 @@ interface AiRecommendationResult {
   notes: string;
 }
 
+interface ExtraInput {
+  name: string;
+  price: string;
+}
+
+interface PieceDraft {
+  marbleId: string;
+  widthCm: string;
+  heightCm: string;
+  thicknessMm: string;
+  quantity: string;
+  description: string;
+  extras: ExtraInput[];
+}
+
+interface Piece extends PieceDraft {
+  key: string;
+}
+
+const emptyDraft: PieceDraft = {
+  marbleId: '',
+  widthCm: '100',
+  heightCm: '60',
+  thicknessMm: '20',
+  quantity: '1',
+  description: '',
+  extras: [],
+};
+
+function pieceBreakdown(piece: PieceDraft, marbles: Marble[]) {
+  const marble = marbles.find((m) => m.id === piece.marbleId);
+  const width = Number(piece.widthCm) || 0;
+  const height = Number(piece.heightCm) || 0;
+  const qty = Number(piece.quantity) || 0;
+  const price = marble?.pricePerM2 ?? 0;
+  const breakdown = calcPieceBreakdown(width, height, price);
+  const extrasTotal = piece.extras.reduce((sum, ex) => sum + (Number(ex.price) || 0), 0);
+  const total = breakdown.unitPrice * qty + extrasTotal;
+  return { marble, breakdown, extrasTotal, total };
+}
+
 export function QuoteForm() {
   const searchParams = useSearchParams();
   const preselected = searchParams.get('marbleId');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState(0);
-  const [marbleId, setMarbleId] = useState(preselected ?? '');
-  const [width, setWidth] = useState('100');
-  const [height, setHeight] = useState('60');
-  const [thickness, setThickness] = useState('20');
-  const [quantity, setQuantity] = useState('1');
+  const [pieces, setPieces] = useState<Piece[]>([]);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [draft, setDraft] = useState<PieceDraft>({ ...emptyDraft, marbleId: preselected ?? '' });
+  const [distanceKm, setDistanceKm] = useState('');
+
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -49,18 +91,22 @@ export function QuoteForm() {
   const [userDescription, setUserDescription] = useState('');
   const [aiResult, setAiResult] = useState<AiRecommendationResult | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
-  const [dimensionsFromAi, setDimensionsFromAi] = useState(false);
 
   const { data } = useQuery({
     queryKey: ['public-marbles-form'],
     queryFn: async () => (await publicApi.get('/api/marbles/public', { params: { limit: 60 } })).data as { marbles: Marble[] },
   });
-
   const marbles = data?.marbles ?? [];
-  const selectedMarble = marbles.find((m) => m.id === marbleId);
 
-  const areaM2 = (Number(width) * Number(height)) / 10000;
-  const estimatedTotal = selectedMarble?.pricePerM2 ? areaM2 * selectedMarble.pricePerM2 * Number(quantity || 1) : null;
+  const { data: companyData } = useQuery({
+    queryKey: ['public-company-form'],
+    queryFn: async () => (await publicApi.get('/api/company/public')).data as { company: Company | null },
+  });
+  const freightRate = companyData?.company?.freightRatePerKm ?? null;
+
+  const piecesTotal = pieces.reduce((sum, p) => sum + pieceBreakdown(p, marbles).total, 0);
+  const freight = freightRate && distanceKm ? Number(distanceKm) * freightRate : 0;
+  const grandTotal = piecesTotal + freight;
 
   const aiMutation = useMutation({
     mutationFn: async () => {
@@ -96,13 +142,58 @@ export function QuoteForm() {
   }
 
   function chooseRecommendation(rec: AiRecommendation) {
-    setMarbleId(rec.marble.id);
-    if (aiResult?.estimatedWidthCm && aiResult?.estimatedHeightCm) {
-      setWidth(String(aiResult.estimatedWidthCm));
-      setHeight(String(aiResult.estimatedHeightCm));
-      setDimensionsFromAi(true);
+    setDraft({
+      ...emptyDraft,
+      marbleId: rec.marble.id,
+      widthCm: aiResult?.estimatedWidthCm ? String(aiResult.estimatedWidthCm) : emptyDraft.widthCm,
+      heightCm: aiResult?.estimatedHeightCm ? String(aiResult.estimatedHeightCm) : emptyDraft.heightCm,
+    });
+    setStep(1);
+  }
+
+  function addExtra() {
+    setDraft((d) => ({ ...d, extras: [...d.extras, { name: '', price: '' }] }));
+  }
+  function updateExtra(idx: number, patch: Partial<ExtraInput>) {
+    setDraft((d) => ({ ...d, extras: d.extras.map((ex, i) => (i === idx ? { ...ex, ...patch } : ex)) }));
+  }
+  function removeExtra(idx: number) {
+    setDraft((d) => ({ ...d, extras: d.extras.filter((_, i) => i !== idx) }));
+  }
+
+  function savePiece() {
+    if (!draft.marbleId || !draft.widthCm || !draft.heightCm) {
+      setError('Selecione o mármore e informe as medidas da peça.');
+      return;
     }
-    setStep(2);
+    setError(null);
+    const cleanExtras = draft.extras.filter((ex) => ex.name && ex.price);
+    if (editingKey) {
+      setPieces((prev) => prev.map((p) => (p.key === editingKey ? { ...draft, extras: cleanExtras, key: editingKey } : p)));
+      setEditingKey(null);
+    } else {
+      setPieces((prev) => [...prev, { ...draft, extras: cleanExtras, key: crypto.randomUUID() }]);
+    }
+    setDraft({ ...emptyDraft });
+  }
+
+  function editPiece(piece: Piece) {
+    setEditingKey(piece.key);
+    setDraft({ ...piece });
+    setError(null);
+  }
+
+  function removePiece(key: string) {
+    setPieces((prev) => prev.filter((p) => p.key !== key));
+    if (editingKey === key) {
+      setEditingKey(null);
+      setDraft({ ...emptyDraft });
+    }
+  }
+
+  function cancelEdit() {
+    setEditingKey(null);
+    setDraft({ ...emptyDraft });
   }
 
   const submitMutation = useMutation({
@@ -113,24 +204,35 @@ export function QuoteForm() {
         clientEmail: email || undefined,
         clientCpfCnpj: cpfCnpj,
         source: 'SELF_SERVICE',
-        items: [
-          { marbleId, widthCm: Number(width), heightCm: Number(height), thicknessMm: Number(thickness), quantity: Number(quantity) },
-        ],
+        items: pieces.map((p) => ({
+          marbleId: p.marbleId,
+          description: p.description || undefined,
+          widthCm: Number(p.widthCm),
+          heightCm: Number(p.heightCm),
+          thicknessMm: Number(p.thicknessMm),
+          quantity: Number(p.quantity),
+          extras: p.extras.map((ex) => ({ name: ex.name, price: Number(ex.price) })),
+        })),
+        freight,
+        freightDistanceKm: distanceKm ? Number(distanceKm) : undefined,
       });
       return data.quote;
     },
     onSuccess: (quote) => {
       setQuoteId(quote.id);
-      setStep(4);
+      setStep(3);
     },
     onError: () => setError('Não foi possível gerar o orçamento. Tente novamente.'),
   });
 
   function next() {
     setError(null);
-    if (step === 1 && !marbleId) return setError('Selecione um mármore.');
-    if (step === 2 && (!width || !height)) return setError('Informe largura e altura.');
-    if (step === 3) {
+    if (step === 1) {
+      if (pieces.length === 0) return setError('Adicione ao menos uma peça ao orçamento.');
+      setStep(2);
+      return;
+    }
+    if (step === 2) {
       if (!name || !phone) return setError('Informe seu nome e telefone.');
       submitMutation.mutate();
       return;
@@ -287,57 +389,178 @@ export function QuoteForm() {
 
           {step === 1 && (
             <div>
-              <h2 className="text-2xl font-bold mb-6">Selecione o mármore</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {marbles.map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => setMarbleId(m.id)}
-                    className={`relative rounded-xl overflow-hidden h-32 border-2 transition-colors cursor-pointer ${
-                      marbleId === m.id ? 'border-marble-gold' : 'border-transparent'
-                    }`}
-                  >
-                    {m.imageUrls[0] ? (
-                      <Image src={m.imageUrls[0]} alt={m.name} fill className="object-cover" sizes="200px" />
-                    ) : (
-                      <div className="w-full h-full bg-marble-gray" />
-                    )}
-                    <div className="absolute inset-0 bg-black/40 flex items-end p-2">
-                      <p className="text-xs font-medium">{m.name}</p>
+              <h2 className="text-2xl font-bold mb-2">Monte seu orçamento</h2>
+              <p className="text-white/50 text-sm mb-6">
+                Adicione quantas peças precisar — bancadas, degraus de escada, soleiras — iguais ou de mármores
+                diferentes, tudo no mesmo orçamento.
+              </p>
+
+              {pieces.length > 0 && (
+                <div className="space-y-3 mb-6">
+                  {pieces.map((piece, idx) => {
+                    const { marble, breakdown, extrasTotal, total } = pieceBreakdown(piece, marbles);
+                    return (
+                      <div key={piece.key} className="glass-panel p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-white">
+                              Peça {idx + 1} — {marble?.name ?? 'Mármore'} {piece.description ? `· ${piece.description}` : ''}
+                            </p>
+                            <p className="text-xs text-white/50 mt-0.5">
+                              {piece.widthCm}cm x {piece.heightCm}cm ({piece.thicknessMm}mm) · Qtd. {piece.quantity}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button onClick={() => editPiece(piece)} className="text-white/50 hover:text-marble-gold cursor-pointer" aria-label="Editar peça">
+                              <Pencil size={15} />
+                            </button>
+                            <button onClick={() => removePiece(piece.key)} className="text-white/50 hover:text-red-400 cursor-pointer" aria-label="Remover peça">
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 text-xs text-white/60 space-y-0.5">
+                          <div className="flex justify-between">
+                            <span>Material ({breakdown.areaM2.toFixed(2)} m²)</span>
+                            <span>{marble?.pricePerM2 != null ? formatCurrency(breakdown.material) : 'sob consulta'}</span>
+                          </div>
+                          <div className="flex justify-between"><span>Acabamento/frontão ({breakdown.perimeterMl.toFixed(2)}ml)</span><span>{formatCurrency(breakdown.acabamento)}</span></div>
+                          <div className="flex justify-between"><span>Instalação ({breakdown.threeSidePerimeterMl.toFixed(2)}ml)</span><span>{formatCurrency(breakdown.instalacao)}</span></div>
+                          {extrasTotal > 0 && <div className="flex justify-between"><span>Extras</span><span>{formatCurrency(extrasTotal)}</span></div>}
+                          <div className="flex justify-between text-white font-semibold pt-1 border-t border-white/10 mt-1">
+                            <span>Subtotal da peça{marble?.pricePerM2 == null ? ' (+ material)' : ''}</span>
+                            <span>{formatCurrency(total)}</span>
+                          </div>
+                        </div>
+                        {marble?.pricePerM2 == null && (
+                          <p className="text-xs text-marble-gold/80 mt-1">
+                            Preço do material sob consulta — valor final informado no orçamento.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="glass-panel p-4 space-y-4">
+                <p className="text-sm font-semibold text-white">{editingKey ? 'Editar peça' : 'Adicionar peça'}</p>
+
+                <div>
+                  <label className="text-sm text-white/60 mb-1 block">Mármore</label>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1">
+                    {marbles.map((m) => (
+                      <button
+                        key={m.id}
+                        onClick={() => setDraft((d) => ({ ...d, marbleId: m.id }))}
+                        className={`relative rounded-lg overflow-hidden h-16 border-2 transition-colors cursor-pointer ${
+                          draft.marbleId === m.id ? 'border-marble-gold' : 'border-transparent'
+                        }`}
+                        type="button"
+                      >
+                        {m.imageUrls[0] ? (
+                          <Image src={m.imageUrls[0]} alt={m.name} fill className="object-cover" sizes="120px" />
+                        ) : (
+                          <div className="w-full h-full bg-marble-gray" />
+                        )}
+                        <div className="absolute inset-0 bg-black/40 flex items-end p-1">
+                          <p className="text-[10px] leading-tight font-medium">{m.name}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Largura (cm)" value={draft.widthCm} onChange={(v) => setDraft((d) => ({ ...d, widthCm: v }))} />
+                  <Field label="Altura (cm)" value={draft.heightCm} onChange={(v) => setDraft((d) => ({ ...d, heightCm: v }))} />
+                  <Field label="Espessura (mm)" value={draft.thicknessMm} onChange={(v) => setDraft((d) => ({ ...d, thicknessMm: v }))} />
+                  <Field label="Quantidade" value={draft.quantity} onChange={(v) => setDraft((d) => ({ ...d, quantity: v }))} />
+                </div>
+
+                <Field
+                  label="Descrição (opcional)"
+                  value={draft.description}
+                  onChange={(v) => setDraft((d) => ({ ...d, description: v }))}
+                  placeholder="Ex: Degrau 1, Pia da cozinha..."
+                />
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm text-white/60">Extras (ex: cuba de inox)</label>
+                    <button onClick={addExtra} type="button" className="text-xs text-marble-gold hover:underline cursor-pointer">
+                      + Adicionar extra
+                    </button>
+                  </div>
+                  {draft.extras.map((extra, exIdx) => (
+                    <div key={exIdx} className="flex gap-2 items-center">
+                      <input
+                        placeholder="Nome (ex: Cuba de inox)"
+                        value={extra.name}
+                        onChange={(e) => updateExtra(exIdx, { name: e.target.value })}
+                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-marble-gold"
+                      />
+                      <input
+                        type="number"
+                        placeholder="Valor (R$)"
+                        value={extra.price}
+                        onChange={(e) => updateExtra(exIdx, { price: e.target.value })}
+                        className="w-28 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-marble-gold"
+                      />
+                      <button onClick={() => removeExtra(exIdx)} type="button" className="text-white/40 hover:text-red-400 cursor-pointer shrink-0">
+                        <Trash2 size={14} />
+                      </button>
                     </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={savePiece}
+                    type="button"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-marble-gold text-marble-dark font-semibold text-sm cursor-pointer"
+                  >
+                    <Plus size={15} /> {editingKey ? 'Salvar alterações' : 'Adicionar peça à lista'}
                   </button>
-                ))}
+                  {editingKey && (
+                    <button
+                      onClick={cancelEdit}
+                      type="button"
+                      className="px-4 py-2.5 rounded-full border border-white/20 text-white/70 text-sm cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {freightRate != null && (
+                <div className="glass-panel p-4 mt-4">
+                  <Field
+                    label="Distância até o local de entrega (km) — opcional"
+                    value={distanceKm}
+                    onChange={setDistanceKm}
+                    placeholder="Ex: 10"
+                  />
+                  {freight > 0 && (
+                    <p className="text-xs text-white/50 mt-2">
+                      Frete estimado: {distanceKm}km x {formatCurrency(freightRate)} = {formatCurrency(freight)}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {pieces.length > 0 && (
+                <div className="glass-panel p-4 mt-4 flex items-center justify-between">
+                  <span className="text-sm text-white/60">Total estimado ({pieces.length} peça{pieces.length > 1 ? 's' : ''})</span>
+                  <span className="text-xl font-bold text-marble-gold">{formatCurrency(grandTotal)}</span>
+                </div>
+              )}
             </div>
           )}
 
           {step === 2 && (
-            <div>
-              <h2 className="text-2xl font-bold mb-2">Informe as medidas</h2>
-              <p className="text-white/50 text-sm mb-6">{selectedMarble?.name} — {MARBLE_TYPE_LABELS[selectedMarble?.type ?? 'MARBLE']}</p>
-              {dimensionsFromAi && (
-                <p className="text-xs text-marble-gold/80 mb-3">
-                  Medida preenchida pela IA a partir da foto — confirme a medida real antes de continuar.
-                </p>
-              )}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <Field label="Largura (cm)" value={width} onChange={(v) => { setWidth(v); setDimensionsFromAi(false); }} />
-                <Field label="Altura (cm)" value={height} onChange={(v) => { setHeight(v); setDimensionsFromAi(false); }} />
-                <Field label="Espessura (mm)" value={thickness} onChange={setThickness} />
-                <Field label="Quantidade" value={quantity} onChange={setQuantity} />
-              </div>
-              <div className="glass-panel p-5">
-                <p className="text-sm text-white/60">Área estimada: {areaM2.toFixed(2)} m²</p>
-                {estimatedTotal != null ? (
-                  <p className="text-xl font-bold text-marble-gold mt-1">≈ {formatCurrency(estimatedTotal)}</p>
-                ) : (
-                  <p className="text-white/60 mt-1 text-sm">Este mármore é sob consulta — valor será informado no orçamento.</p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
             <div>
               <h2 className="text-2xl font-bold mb-6">Seus dados</h2>
               <div className="space-y-4">
@@ -357,14 +580,12 @@ export function QuoteForm() {
             </div>
           )}
 
-          {step === 4 && quoteId && (
+          {step === 3 && quoteId && (
             <div className="text-center py-6">
               <Check className="mx-auto text-marble-gold mb-4" size={48} />
               <h2 className="text-2xl font-bold mb-2">Orçamento gerado!</h2>
               <p className="text-white/60 mb-8">
-                {estimatedTotal != null
-                  ? `Valor estimado: ${formatCurrency(estimatedTotal)}`
-                  : 'Nossa equipe vai retornar com os valores em breve.'}
+                {piecesTotal > 0 ? `Valor estimado: ${formatCurrency(grandTotal)}` : 'Nossa equipe vai retornar com os valores em breve.'}
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <a href={`/api/pdf/quote/${quoteId}`} target="_blank" rel="noreferrer">
@@ -385,7 +606,7 @@ export function QuoteForm() {
 
       {error && <p className="text-red-400 text-sm mt-4">{error}</p>}
 
-      {step > 0 && step < 4 && (
+      {step > 0 && step < STEPS.length - 1 && (
         <div className="flex justify-between mt-8">
           <button
             onClick={() => setStep((s) => Math.max(0, s - 1))}
@@ -398,7 +619,7 @@ export function QuoteForm() {
             disabled={submitMutation.isPending}
             className="px-6 py-3 rounded-full bg-marble-gold text-marble-dark font-semibold cursor-pointer disabled:opacity-50"
           >
-            {step === 3 ? (submitMutation.isPending ? 'Enviando...' : 'Gerar orçamento') : 'Continuar'}
+            {step === 2 ? (submitMutation.isPending ? 'Enviando...' : 'Gerar orçamento') : 'Continuar'}
           </button>
         </div>
       )}

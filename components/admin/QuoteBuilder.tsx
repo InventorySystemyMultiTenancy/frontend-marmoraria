@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input, Label, Select, Textarea } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
+import { calcPieceBreakdown } from '@/lib/pricing';
 
 interface ExtraInput {
   name: string;
@@ -82,18 +83,15 @@ export function QuoteBuilder() {
     updateItem(idx, { extras: items[idx].extras.filter((_, i) => i !== extraIdx) });
   }
 
-  // Preview local: replica a formula padrao (area*pricePerM2 + perimetro*acabamento +
-  // perimetro3lados*instalacao) so para dar uma estimativa enquanto o usuario digita.
-  // O calculo oficial e sempre feito no backend ao salvar, usando a formula configurada.
+  // Preview local: replica a formula padrao para dar uma estimativa enquanto o
+  // usuario digita. O calculo oficial e sempre feito no backend ao salvar,
+  // usando a formula configurada.
   function calcItemUnitPrice(item: BuilderItem) {
     const marble = marbles.find((m) => m.id === item.marbleId);
     const width = Number(item.widthCm) || 0;
     const height = Number(item.heightCm) || 0;
     const price = marble?.pricePerM2 ?? 0;
-    const area = (width * height) / 10000;
-    const perimeter = (2 * (width + height)) / 100;
-    const threeSidePerimeter = (width + 2 * height) / 100;
-    return area * price + perimeter * 110 + threeSidePerimeter * 150;
+    return calcPieceBreakdown(width, height, price).unitPrice;
   }
 
   function calcItemExtrasTotal(item: BuilderItem) {

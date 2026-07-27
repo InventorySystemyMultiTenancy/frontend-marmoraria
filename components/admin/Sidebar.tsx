@@ -15,6 +15,7 @@ import {
   Gem,
   UserCog,
   Sigma,
+  Building2,
   LogOut,
   Home,
 } from 'lucide-react';
@@ -39,6 +40,7 @@ const NAV_ITEMS: {
   { href: '/admin/catalogo', label: 'Catálogo', icon: Gem, permission: 'marbles_view' },
   { href: '/admin/funcionarios', label: 'Funcionários', icon: UserCog, permission: 'users_view' },
   { href: '/admin/formula', label: 'Fórmula', icon: Sigma },
+  { href: '/admin/empresa', label: 'Empresa', icon: Building2 },
 ];
 
 export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {

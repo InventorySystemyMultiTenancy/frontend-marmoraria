@@ -270,6 +270,18 @@ export interface FinancialEntry {
   notes?: string | null;
 }
 
+export interface Company {
+  id: string;
+  name: string;
+  cnpj?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
+  address?: string | null;
+  logoUrl?: string | null;
+  freightRatePerKm?: number | null;
+}
+
 export interface PaginatedResponse<T> {
   total: number;
   page: number;
