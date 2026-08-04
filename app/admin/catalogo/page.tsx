@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2, Upload } from 'lucide-react';
+import { Plus, Pencil, Trash2, Upload, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Marble, MARBLE_TYPE_LABELS, MarbleType } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,7 @@ export default function CatalogoAdminPage() {
   const [editing, setEditing] = useState<Marble | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [deletingImageUrl, setDeletingImageUrl] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['marbles-admin', search],
@@ -71,8 +72,20 @@ export default function CatalogoAdminPage() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['marbles-admin'] }),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['marbles-admin'] });
+      setEditing((prev) => (prev && prev.id === res.data.marble.id ? res.data.marble : prev));
+    },
     onSettled: () => setUploadingId(null),
+  });
+
+  const deleteImageMutation = useMutation({
+    mutationFn: async ({ id, url }: { id: string; url: string }) => api.delete(`/marbles/${id}/images`, { data: { url } }),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['marbles-admin'] });
+      setEditing((prev) => (prev && prev.id === res.data.marble.id ? res.data.marble : prev));
+    },
+    onSettled: () => setDeletingImageUrl(null),
   });
 
   function openCreate() {
@@ -185,6 +198,50 @@ export default function CatalogoAdminPage() {
         <h2 className="text-lg font-semibold text-marble-dark mb-4">
           {editing ? 'Editar mármore' : 'Novo mármore'}
         </h2>
+
+        {editing && (
+          <div className="mb-4 space-y-2">
+            <Label>Fotos</Label>
+            <div className="flex flex-wrap gap-2">
+              {editing.imageUrls.map((url) => (
+                <div key={url} className="relative h-16 w-16 shrink-0">
+                  <Image src={url} alt={editing.name} fill className="rounded object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeletingImageUrl(url);
+                      deleteImageMutation.mutate({ id: editing.id, url });
+                    }}
+                    disabled={deletingImageUrl === url}
+                    className="absolute -right-1.5 -top-1.5 rounded-full bg-red-600 p-0.5 text-white hover:bg-red-700 disabled:opacity-50 cursor-pointer"
+                    aria-label="Excluir foto"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+              <label className="flex h-16 w-16 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded border border-dashed border-gray-300 text-gray-400 hover:border-marble-gold hover:text-marble-gold">
+                <Upload size={16} />
+                <span className="text-[10px]">Adicionar</span>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files?.length) {
+                      setUploadingId(editing.id);
+                      uploadMutation.mutate({ id: editing.id, files: e.target.files });
+                    }
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+            </div>
+            {uploadingId === editing.id && <p className="text-xs text-gray-400">Enviando foto...</p>}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit((v) => saveMutation.mutate(v))} className="space-y-3">
           <div>
             <Label>Nome *</Label>

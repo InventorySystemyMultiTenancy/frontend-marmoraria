@@ -40,6 +40,8 @@ interface PieceDraft {
   quantity: string;
   description: string;
   extras: ExtraInput[];
+  includeAcabamento: boolean;
+  includeInstalacao: boolean;
 }
 
 interface Piece extends PieceDraft {
@@ -54,6 +56,8 @@ const emptyDraft: PieceDraft = {
   quantity: '1',
   description: '',
   extras: [],
+  includeAcabamento: false,
+  includeInstalacao: false,
 };
 
 function pieceBreakdown(piece: PieceDraft, marbles: Marble[]) {
@@ -62,7 +66,7 @@ function pieceBreakdown(piece: PieceDraft, marbles: Marble[]) {
   const height = Number(piece.heightCm) || 0;
   const qty = Number(piece.quantity) || 0;
   const price = marble?.pricePerM2 ?? 0;
-  const breakdown = calcPieceBreakdown(width, height, price);
+  const breakdown = calcPieceBreakdown(width, height, price, piece.includeAcabamento, piece.includeInstalacao);
   const extrasTotal = piece.extras.reduce((sum, ex) => sum + (Number(ex.price) || 0), 0);
   const total = breakdown.unitPrice * qty + extrasTotal;
   return { marble, breakdown, extrasTotal, total };
@@ -212,6 +216,8 @@ export function QuoteForm() {
           thicknessMm: Number(p.thicknessMm),
           quantity: Number(p.quantity),
           extras: p.extras.map((ex) => ({ name: ex.name, price: Number(ex.price) })),
+          includeAcabamento: p.includeAcabamento,
+          includeInstalacao: p.includeInstalacao,
         })),
         freight,
         freightDistanceKm: distanceKm ? Number(distanceKm) : undefined,
@@ -425,8 +431,12 @@ export function QuoteForm() {
                             <span>Material ({breakdown.areaM2.toFixed(2)} m²)</span>
                             <span>{marble?.pricePerM2 != null ? formatCurrency(breakdown.material) : 'sob consulta'}</span>
                           </div>
-                          <div className="flex justify-between"><span>Acabamento/frontão ({breakdown.perimeterMl.toFixed(2)}ml)</span><span>{formatCurrency(breakdown.acabamento)}</span></div>
-                          <div className="flex justify-between"><span>Instalação ({breakdown.threeSidePerimeterMl.toFixed(2)}ml)</span><span>{formatCurrency(breakdown.instalacao)}</span></div>
+                          {piece.includeAcabamento && (
+                            <div className="flex justify-between"><span>Acabamento/frontão ({breakdown.perimeterMl.toFixed(2)}ml)</span><span>{formatCurrency(breakdown.acabamento)}</span></div>
+                          )}
+                          {piece.includeInstalacao && (
+                            <div className="flex justify-between"><span>Instalação ({breakdown.threeSidePerimeterMl.toFixed(2)}ml)</span><span>{formatCurrency(breakdown.instalacao)}</span></div>
+                          )}
                           {extrasTotal > 0 && <div className="flex justify-between"><span>Extras</span><span>{formatCurrency(extrasTotal)}</span></div>}
                           <div className="flex justify-between text-white font-semibold pt-1 border-t border-white/10 mt-1">
                             <span>Subtotal da peça{marble?.pricePerM2 == null ? ' (+ material)' : ''}</span>
@@ -485,6 +495,48 @@ export function QuoteForm() {
                   onChange={(v) => setDraft((d) => ({ ...d, description: v }))}
                   placeholder="Ex: Degrau 1, Pia da cozinha..."
                 />
+
+                <div className="space-y-2">
+                  <p className="text-sm text-white/60">Serviços adicionais (opcional)</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDraft((d) => ({ ...d, includeAcabamento: !d.includeAcabamento }))}
+                      className={`flex items-center gap-2 rounded-lg border-2 px-4 py-2.5 text-left text-sm transition-colors cursor-pointer ${
+                        draft.includeAcabamento
+                          ? 'border-marble-gold bg-marble-gold/10 text-white'
+                          : 'border-white/15 text-white/60 hover:border-white/30'
+                      }`}
+                    >
+                      <span
+                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                          draft.includeAcabamento ? 'border-marble-gold bg-marble-gold' : 'border-white/30'
+                        }`}
+                      >
+                        {draft.includeAcabamento && <Check size={12} className="text-marble-dark" />}
+                      </span>
+                      Selecione se o seu orçamento precisa de acabamento/frontão
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDraft((d) => ({ ...d, includeInstalacao: !d.includeInstalacao }))}
+                      className={`flex items-center gap-2 rounded-lg border-2 px-4 py-2.5 text-left text-sm transition-colors cursor-pointer ${
+                        draft.includeInstalacao
+                          ? 'border-marble-gold bg-marble-gold/10 text-white'
+                          : 'border-white/15 text-white/60 hover:border-white/30'
+                      }`}
+                    >
+                      <span
+                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                          draft.includeInstalacao ? 'border-marble-gold bg-marble-gold' : 'border-white/30'
+                        }`}
+                      >
+                        {draft.includeInstalacao && <Check size={12} className="text-marble-dark" />}
+                      </span>
+                      Selecione se o seu orçamento precisa de instalação
+                    </button>
+                  </div>
+                </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">

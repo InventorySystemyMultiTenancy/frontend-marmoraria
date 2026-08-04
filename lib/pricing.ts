@@ -16,7 +16,13 @@ export interface PieceBreakdown {
   unitPrice: number;
 }
 
-export function calcPieceBreakdown(widthCm: number, heightCm: number, pricePerM2: number): PieceBreakdown {
+export function calcPieceBreakdown(
+  widthCm: number,
+  heightCm: number,
+  pricePerM2: number,
+  includeAcabamento = true,
+  includeInstalacao = true
+): PieceBreakdown {
   const widthM = widthCm / 100;
   const heightM = heightCm / 100;
   const areaM2 = widthM * heightM;
@@ -24,8 +30,8 @@ export function calcPieceBreakdown(widthCm: number, heightCm: number, pricePerM2
   const threeSidePerimeterMl = widthM + 2 * heightM;
 
   const material = areaM2 * pricePerM2;
-  const acabamento = perimeterMl * ACABAMENTO_RATE_PER_ML;
-  const instalacao = threeSidePerimeterMl * INSTALACAO_RATE_PER_ML;
+  const acabamento = includeAcabamento ? perimeterMl * ACABAMENTO_RATE_PER_ML : 0;
+  const instalacao = includeInstalacao ? threeSidePerimeterMl * INSTALACAO_RATE_PER_ML : 0;
 
   return {
     areaM2,
