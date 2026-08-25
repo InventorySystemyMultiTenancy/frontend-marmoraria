@@ -1,12 +1,13 @@
 'use client';
 
-import { use } from 'react';
+import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Order, OrderStatus, ORDER_STATUS_LABELS } from '@/types';
 import { Badge } from '@/components/ui/badge';
-import { Select } from '@/components/ui/input';
+import { Input, Label, Select } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
@@ -37,12 +38,32 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['order', id] }),
   });
 
+  const [discount, setDiscount] = useState('0');
+  const [discountPct, setDiscountPct] = useState('0');
+
+  useEffect(() => {
+    if (data?.quote) {
+      setDiscount(String(data.quote.discount ?? 0));
+      setDiscountPct(String(data.quote.discountPct ?? 0));
+    }
+  }, [data?.quote]);
+
+  const discountMutation = useMutation({
+    mutationFn: async () =>
+      api.patch(`/orders/${id}/discount`, {
+        discount: Number(discount) || 0,
+        discountPct: Number(discountPct) || 0,
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['order', id] }),
+  });
+
   if (isLoading || !data) {
     return <p className="text-gray-400">Carregando...</p>;
   }
 
   const canUpdateStatus = hasPermission(user, 'orders_update_status');
   const canViewCosts = hasPermission(user, 'orders_view_costs');
+  const canApplyDiscount = hasPermission(user, 'orders_apply_discount');
   const quote = data.quote;
 
   return (
@@ -164,6 +185,49 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
                 <span>Total</span>
                 <span>{formatCurrency(quote.total)}</span>
               </div>
+
+              {canApplyDiscount && (
+                <div className="pt-4 mt-2 border-t border-gray-100 space-y-3">
+                  <p className="font-medium text-marble-dark">Aplicar desconto</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Desconto (R$)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={discount}
+                        onChange={(e) => setDiscount(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label>Desconto (%)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="0.01"
+                        value={discountPct}
+                        onChange={(e) => setDiscountPct(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="gold"
+                    disabled={discountMutation.isPending}
+                    onClick={() => discountMutation.mutate()}
+                  >
+                    {discountMutation.isPending ? 'Aplicando...' : 'Aplicar desconto'}
+                  </Button>
+                  {discountMutation.isSuccess && (
+                    <p className="text-green-600 text-xs">Desconto aplicado com sucesso.</p>
+                  )}
+                  {discountMutation.isError && (
+                    <p className="text-red-600 text-xs">Não foi possível aplicar o desconto.</p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 

@@ -50,14 +50,19 @@ const STAGE_STEPS: { status: OrderStatus; label: string }[] = [
   { status: 'DELIVERED', label: 'Entregue' },
 ];
 
+type SearchMode = 'cpfCnpj' | 'phone';
+
 export function OrderTracker() {
+  const [mode, setMode] = useState<SearchMode>('cpfCnpj');
   const [cpfCnpj, setCpfCnpj] = useState('');
+  const [phone, setPhone] = useState('');
   const [results, setResults] = useState<TrackedOrder[] | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const { data } = await publicApi.post('/api/orders/track', { cpfCnpj });
+      const payload = mode === 'cpfCnpj' ? { cpfCnpj } : { phone };
+      const { data } = await publicApi.post('/api/orders/track', payload);
       return data.orders as TrackedOrder[];
     },
     onSuccess: (orders) => {
@@ -68,15 +73,19 @@ export function OrderTracker() {
       setResults(null);
       const message =
         (error as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        'Não foi possível localizar pedidos para esse CPF/CNPJ. Tente novamente.';
+        'Não foi possível localizar pedidos com os dados informados. Tente novamente.';
       setErrorMessage(message);
     },
   });
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!cpfCnpj) {
+    if (mode === 'cpfCnpj' && !cpfCnpj) {
       setErrorMessage('Informe o CPF ou CNPJ.');
+      return;
+    }
+    if (mode === 'phone' && !phone) {
+      setErrorMessage('Informe o telefone.');
       return;
     }
     mutation.mutate();
@@ -86,19 +95,52 @@ export function OrderTracker() {
     <div className="max-w-2xl mx-auto">
       <h1 className="text-3xl font-bold mb-2 text-center">Acompanhar Pedido</h1>
       <p className="text-white/60 text-center mb-10">
-        Digite o CPF ou CNPJ usado na hora de fazer o orçamento para ver o andamento dos seus pedidos.
+        Digite o CPF/CNPJ ou o telefone usado na hora de fazer o orçamento para ver o andamento dos seus pedidos.
       </p>
 
       <form onSubmit={handleSubmit} className="glass-panel p-6 space-y-4">
-        <div>
-          <label className="text-sm text-white/60 mb-1 block">CPF ou CNPJ</label>
-          <input
-            value={cpfCnpj}
-            onChange={(e) => setCpfCnpj(e.target.value)}
-            placeholder="000.000.000-00"
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-marble-gold"
-          />
+        <div className="flex gap-2 p-1 bg-white/5 rounded-lg w-fit">
+          <button
+            type="button"
+            onClick={() => setMode('cpfCnpj')}
+            className={`px-4 py-1.5 rounded-md text-sm transition-colors cursor-pointer ${
+              mode === 'cpfCnpj' ? 'bg-marble-gold text-marble-dark font-semibold' : 'text-white/60'
+            }`}
+          >
+            CPF/CNPJ
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('phone')}
+            className={`px-4 py-1.5 rounded-md text-sm transition-colors cursor-pointer ${
+              mode === 'phone' ? 'bg-marble-gold text-marble-dark font-semibold' : 'text-white/60'
+            }`}
+          >
+            Telefone
+          </button>
         </div>
+
+        {mode === 'cpfCnpj' ? (
+          <div>
+            <label className="text-sm text-white/60 mb-1 block">CPF ou CNPJ</label>
+            <input
+              value={cpfCnpj}
+              onChange={(e) => setCpfCnpj(e.target.value)}
+              placeholder="000.000.000-00"
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-marble-gold"
+            />
+          </div>
+        ) : (
+          <div>
+            <label className="text-sm text-white/60 mb-1 block">Telefone</label>
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="(00) 00000-0000"
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-marble-gold"
+            />
+          </div>
+        )}
 
         {errorMessage && <p className="text-red-400 text-sm">{errorMessage}</p>}
 
@@ -115,7 +157,7 @@ export function OrderTracker() {
       <AnimatePresence mode="wait">
         {results && (
           <motion.div
-            key={cpfCnpj}
+            key={mode === 'cpfCnpj' ? cpfCnpj : phone}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}

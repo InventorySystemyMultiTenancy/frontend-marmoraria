@@ -15,6 +15,7 @@ export interface UserPermissions {
   orders_create: boolean;
   orders_update_status: boolean;
   orders_view_costs: boolean;
+  orders_apply_discount: boolean;
   stock_view: boolean;
   stock_edit: boolean;
   stock_add: boolean;
@@ -40,7 +41,7 @@ export const PERMISSION_GROUPS: { label: string; keys: (keyof UserPermissions)[]
   },
   {
     label: 'Pedidos / Produção',
-    keys: ['orders_view', 'orders_create', 'orders_update_status', 'orders_view_costs'],
+    keys: ['orders_view', 'orders_create', 'orders_update_status', 'orders_view_costs', 'orders_apply_discount'],
   },
   { label: 'Estoque', keys: ['stock_view', 'stock_edit', 'stock_add'] },
   {
@@ -66,6 +67,7 @@ export const PERMISSION_LABELS: Record<keyof UserPermissions, string> = {
   orders_create: 'Criar pedidos',
   orders_update_status: 'Atualizar status de pedidos',
   orders_view_costs: 'Visualizar custos de produção',
+  orders_apply_discount: 'Aplicar desconto em pedidos',
   stock_view: 'Visualizar estoque',
   stock_edit: 'Editar estoque',
   stock_add: 'Adicionar entradas ao estoque',
