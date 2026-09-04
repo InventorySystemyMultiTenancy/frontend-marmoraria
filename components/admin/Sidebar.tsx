@@ -73,7 +73,7 @@ export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: (
       )}
       <aside
         className={cn(
-          'w-60 shrink-0 h-screen bg-marble-dark text-white flex flex-col overflow-hidden fixed inset-y-0 left-0 z-50 transition-transform duration-300 md:static md:z-auto md:translate-x-0',
+          'w-60 shrink-0 h-screen bg-marble-dark text-white flex flex-col overflow-hidden fixed inset-y-0 left-0 z-50 transition-transform duration-300 md:translate-x-0',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >

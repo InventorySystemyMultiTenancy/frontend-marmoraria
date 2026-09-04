@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -7,12 +8,14 @@ import { FileText, Package, TrendingUp, Wallet, AlertTriangle } from 'lucide-rea
 import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input, Label } from '@/components/ui/input';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { QUOTE_STATUS_LABELS, QuoteStatus } from '@/types';
 import { RevenueTrendChart, TopProductsChart, QuotesStatusDonut } from '@/components/admin/DashboardCharts';
 
 interface DashboardSummary {
-  quotesThisMonth: number;
+  quotesCount: number;
   ordersInProgress: number;
   revenue: number;
   expense: number;
@@ -29,15 +32,50 @@ interface DashboardSummary {
   }[];
 }
 
+type PeriodOption = 'month' | '30' | '90' | 'custom';
+
+const PERIOD_OPTIONS: { value: PeriodOption; label: string }[] = [
+  { value: 'month', label: 'Este mês' },
+  { value: '30', label: 'Últimos 30 dias' },
+  { value: '90', label: 'Últimos 90 dias' },
+  { value: 'custom', label: 'Data específica' },
+];
+
+function toISODate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
 const cardVariants = {
   hidden: { opacity: 0, y: 12 },
   visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.06, duration: 0.35 } }),
 };
 
 export default function DashboardPage() {
+  const [period, setPeriod] = useState<PeriodOption>('month');
+  const [customFrom, setCustomFrom] = useState(toISODate(new Date()));
+  const [customTo, setCustomTo] = useState(toISODate(new Date()));
+  const [appliedCustomRange, setAppliedCustomRange] = useState({ from: customFrom, to: customTo });
+
+  const range = useMemo(() => {
+    if (period === 'month') return {};
+    if (period === '30') {
+      const from = new Date();
+      from.setDate(from.getDate() - 29);
+      return { from: toISODate(from), to: toISODate(new Date()) };
+    }
+    if (period === '90') {
+      const from = new Date();
+      from.setDate(from.getDate() - 89);
+      return { from: toISODate(from), to: toISODate(new Date()) };
+    }
+    return { from: appliedCustomRange.from, to: appliedCustomRange.to };
+  }, [period, appliedCustomRange]);
+
+  const periodLabel = period === 'month' ? 'no mês' : 'no período';
+
   const { data, isLoading } = useQuery({
-    queryKey: ['dashboard-summary'],
-    queryFn: async () => (await api.get<DashboardSummary>('/dashboard/summary')).data,
+    queryKey: ['dashboard-summary', range],
+    queryFn: async () => (await api.get<DashboardSummary>('/dashboard/summary', { params: range })).data,
   });
 
   const { data: monthly } = useQuery({
@@ -46,21 +84,21 @@ export default function DashboardPage() {
   });
 
   const { data: topProducts } = useQuery({
-    queryKey: ['dashboard-top-products'],
-    queryFn: async () => (await api.get('/dashboard/top-products')).data as { products: { marbleId: string; name: string; totalRevenue: number }[] },
+    queryKey: ['dashboard-top-products', range],
+    queryFn: async () => (await api.get('/dashboard/top-products', { params: range })).data as { products: { marbleId: string; name: string; totalRevenue: number }[] },
   });
 
   const { data: quotesByStatus } = useQuery({
-    queryKey: ['dashboard-quotes-by-status'],
-    queryFn: async () => (await api.get('/dashboard/quotes-by-status')).data as { data: { status: string; count: number }[] },
+    queryKey: ['dashboard-quotes-by-status', range],
+    queryFn: async () => (await api.get('/dashboard/quotes-by-status', { params: range })).data as { data: { status: string; count: number }[] },
   });
 
   const kpis = [
-    { label: 'Orçamentos no mês', value: String(data?.quotesThisMonth ?? 0), icon: FileText, accent: 'from-blue-500/15 text-blue-600' },
+    { label: `Orçamentos ${periodLabel}`, value: String(data?.quotesCount ?? 0), icon: FileText, accent: 'from-blue-500/15 text-blue-600' },
     { label: 'Pedidos em andamento', value: String(data?.ordersInProgress ?? 0), icon: Package, accent: 'from-marble-gold/15 text-marble-gold' },
-    { label: 'Receita do mês', value: formatCurrency(data?.revenue ?? 0), icon: TrendingUp, accent: 'from-green-500/15 text-green-600' },
+    { label: `Receita ${periodLabel}`, value: formatCurrency(data?.revenue ?? 0), icon: TrendingUp, accent: 'from-green-500/15 text-green-600' },
     {
-      label: 'Lucro do mês',
+      label: `Lucro ${periodLabel}`,
       value: formatCurrency(data?.profit ?? 0),
       icon: Wallet,
       accent: data && data.profit < 0 ? 'from-red-500/15 text-red-600' : 'from-marble-gold/15 text-marble-gold',
@@ -69,13 +107,55 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <motion.h1
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-2xl font-bold text-marble-dark"
-      >
-        Dashboard
-      </motion.h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <motion.h1
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-2xl font-bold text-marble-dark"
+        >
+          Dashboard
+        </motion.h1>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {PERIOD_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setPeriod(opt.value)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
+                period === opt.value
+                  ? 'bg-marble-dark text-white border-marble-dark'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-marble-gold'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {period === 'custom' && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-wrap items-end gap-3 bg-white border border-gray-100 rounded-xl p-3"
+        >
+          <div>
+            <Label>De</Label>
+            <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-9" />
+          </div>
+          <div>
+            <Label>Até</Label>
+            <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-9" />
+          </div>
+          <Button
+            size="sm"
+            variant="gold"
+            onClick={() => setAppliedCustomRange({ from: customFrom, to: customTo })}
+          >
+            Aplicar
+          </Button>
+        </motion.div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((kpi, i) => (
