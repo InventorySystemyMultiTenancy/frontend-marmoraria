@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useQueries, useMutation } from '@tanstack/react-query';
 import { Plus, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Client, Marble } from '@/types';
@@ -11,6 +11,7 @@ import { Input, Label, Select, Textarea } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 import { calcPieceBreakdown } from '@/lib/pricing';
+import { useDebouncedValue } from '@/lib/useDebouncedValue';
 
 interface ExtraInput {
   name: string;
@@ -25,6 +26,8 @@ interface BuilderItem {
   quantity: string;
   description: string;
   extras: ExtraInput[];
+  includeAcabamento: boolean;
+  includeInstalacao: boolean;
 }
 
 const emptyItem: BuilderItem = {
@@ -35,6 +38,9 @@ const emptyItem: BuilderItem = {
   quantity: '1',
   description: '',
   extras: [],
+  // Acabamento e instalação só entram no preço se o admin marcar a opção.
+  includeAcabamento: false,
+  includeInstalacao: false,
 };
 
 export function QuoteBuilder() {
@@ -66,6 +72,46 @@ export function QuoteBuilder() {
 
   const marbles = marblesData?.marbles ?? [];
 
+  // Prévia com a MESMA fórmula que o backend usa de verdade ao salvar o
+  // orçamento e gerar o PDF (configurada em /admin/formula), incluindo os
+  // toggles de acabamento/instalação — assim a prévia nunca diverge do valor
+  // final. Debounce pra não disparar uma requisição a cada tecla.
+  const debouncedItems = useDebouncedValue(items, 400);
+  const previewQueries = useQueries({
+    queries: debouncedItems.map((item) => {
+      const marble = marbles.find((m) => m.id === item.marbleId);
+      const width = Number(item.widthCm) || 0;
+      const height = Number(item.heightCm) || 0;
+      const thickness = Number(item.thicknessMm) || 20;
+      const pricePerM2 = marble?.pricePerM2 ?? 0;
+      return {
+        queryKey: [
+          'formula-preview',
+          width,
+          height,
+          thickness,
+          pricePerM2,
+          item.includeAcabamento,
+          item.includeInstalacao,
+        ],
+        queryFn: async () =>
+          (
+            await api.post('/formula/preview/public', {
+              width,
+              height,
+              thickness,
+              pricePerM2,
+              quantity: 1,
+              includeAcabamento: item.includeAcabamento,
+              includeInstalacao: item.includeInstalacao,
+            })
+          ).data as { result: number },
+        enabled: Boolean(item.marbleId && width > 0 && height > 0),
+        staleTime: 60 * 1000,
+      };
+    }),
+  });
+
   function updateItem(idx: number, patch: Partial<BuilderItem>) {
     setItems((prev) => prev.map((item, i) => (i === idx ? { ...item, ...patch } : item)));
   }
@@ -83,27 +129,30 @@ export function QuoteBuilder() {
     updateItem(idx, { extras: items[idx].extras.filter((_, i) => i !== extraIdx) });
   }
 
-  // Preview local: replica a formula padrao para dar uma estimativa enquanto o
-  // usuario digita. O calculo oficial e sempre feito no backend ao salvar,
-  // usando a formula configurada.
-  function calcItemUnitPrice(item: BuilderItem) {
+  // Preço unitário do item: usa o resultado da fórmula ativa (POST /formula/preview/public),
+  // que é a mesma conta que o backend faz ao salvar o orçamento — assim a prévia
+  // bate com o valor que sai no PDF. Enquanto a consulta ainda não voltou (ex:
+  // digitando agora mesmo), cai numa estimativa local só pra não piscar R$ 0,00.
+  function calcItemUnitPrice(idx: number, item: BuilderItem) {
+    const preview = previewQueries[idx]?.data?.result;
+    if (preview != null) return preview;
     const marble = marbles.find((m) => m.id === item.marbleId);
     const width = Number(item.widthCm) || 0;
     const height = Number(item.heightCm) || 0;
     const price = marble?.pricePerM2 ?? 0;
-    return calcPieceBreakdown(width, height, price).unitPrice;
+    return calcPieceBreakdown(width, height, price, item.includeAcabamento, item.includeInstalacao).unitPrice;
   }
 
   function calcItemExtrasTotal(item: BuilderItem) {
     return item.extras.reduce((sum, ex) => sum + (Number(ex.price) || 0), 0);
   }
 
-  function calcItemTotal(item: BuilderItem) {
+  function calcItemTotal(idx: number, item: BuilderItem) {
     const qty = Number(item.quantity) || 0;
-    return calcItemUnitPrice(item) * qty + calcItemExtrasTotal(item);
+    return calcItemUnitPrice(idx, item) * qty + calcItemExtrasTotal(item);
   }
 
-  const subtotal = items.reduce((sum, item) => sum + calcItemTotal(item), 0);
+  const subtotal = items.reduce((sum, item, idx) => sum + calcItemTotal(idx, item), 0);
   const computedFreight =
     freightDistanceKm && freightRatePerKm
       ? Number(freightDistanceKm) * Number(freightRatePerKm)
@@ -131,6 +180,8 @@ export function QuoteBuilder() {
           extras: i.extras
             .filter((ex) => ex.name && ex.price)
             .map((ex) => ({ name: ex.name, price: Number(ex.price) })),
+          includeAcabamento: i.includeAcabamento,
+          includeInstalacao: i.includeInstalacao,
         })),
         discount: Number(discount || 0),
         discountPct: Number(discountPct || 0),
@@ -250,6 +301,25 @@ export function QuoteBuilder() {
                 )}
               </div>
 
+              <div className="flex flex-wrap gap-4 text-sm">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={item.includeAcabamento}
+                    onChange={(e) => updateItem(idx, { includeAcabamento: e.target.checked })}
+                  />
+                  Incluir acabamento/frontão
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={item.includeInstalacao}
+                    onChange={(e) => updateItem(idx, { includeInstalacao: e.target.checked })}
+                  />
+                  Incluir instalação
+                </label>
+              </div>
+
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="mb-0">Extras (ex: cuba de inox)</Label>
@@ -280,7 +350,7 @@ export function QuoteBuilder() {
               </div>
 
               <p className="text-sm text-right text-marble-gray">
-                Subtotal do item: <span className="font-semibold text-marble-dark">{formatCurrency(calcItemTotal(item))}</span>
+                Subtotal do item: <span className="font-semibold text-marble-dark">{formatCurrency(calcItemTotal(idx, item))}</span>
                 {item.marbleId && marbles.find((m) => m.id === item.marbleId)?.pricePerM2 == null && (
                   <span className="block text-xs text-marble-gray/70">Aproximadamente (preço sob consulta)</span>
                 )}

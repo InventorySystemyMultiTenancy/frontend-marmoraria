@@ -3,13 +3,14 @@
 import { useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useQueries, useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Camera, Sparkles, X, Plus, Trash2, Pencil } from 'lucide-react';
 import { publicApi } from '@/lib/api';
 import { Company, Marble } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import { calcPieceBreakdown } from '@/lib/pricing';
+import { useDebouncedValue } from '@/lib/useDebouncedValue';
 
 const STEPS = ['Foto (opcional)', 'Peças', 'Seus dados', 'Resultado'];
 const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
@@ -60,7 +61,12 @@ const emptyDraft: PieceDraft = {
   includeInstalacao: false,
 };
 
-function pieceBreakdown(piece: PieceDraft, marbles: Marble[]) {
+// previewUnitPrice vem da fórmula ativa de verdade (POST /formula/preview/public)
+// — a mesma que o backend usa ao salvar o orçamento e gerar o PDF. Enquanto a
+// prévia ainda não voltou, cai numa estimativa local (breakdown.unitPrice) só
+// pra não piscar R$ 0,00; o breakdown por linha (material/acabamento/instalação)
+// continua sendo só informativo.
+function pieceBreakdown(piece: PieceDraft, marbles: Marble[], previewUnitPrice?: number) {
   const marble = marbles.find((m) => m.id === piece.marbleId);
   const width = Number(piece.widthCm) || 0;
   const height = Number(piece.heightCm) || 0;
@@ -68,7 +74,8 @@ function pieceBreakdown(piece: PieceDraft, marbles: Marble[]) {
   const price = marble?.pricePerM2 ?? 0;
   const breakdown = calcPieceBreakdown(width, height, price, piece.includeAcabamento, piece.includeInstalacao);
   const extrasTotal = piece.extras.reduce((sum, ex) => sum + (Number(ex.price) || 0), 0);
-  const total = breakdown.unitPrice * qty + extrasTotal;
+  const unitPrice = previewUnitPrice ?? breakdown.unitPrice;
+  const total = unitPrice * qty + extrasTotal;
   return { marble, breakdown, extrasTotal, total };
 }
 
@@ -108,7 +115,48 @@ export function QuoteForm() {
   });
   const freightRate = companyData?.company?.freightRatePerKm ?? null;
 
-  const piecesTotal = pieces.reduce((sum, p) => sum + pieceBreakdown(p, marbles).total, 0);
+  // Prévia com a fórmula ativa de verdade, pra bater com o valor salvo/PDF (ver
+  // QuoteBuilder.tsx no admin, que usa a mesma estratégia).
+  const debouncedPieces = useDebouncedValue(pieces, 400);
+  const previewQueries = useQueries({
+    queries: debouncedPieces.map((piece) => {
+      const marble = marbles.find((m) => m.id === piece.marbleId);
+      const width = Number(piece.widthCm) || 0;
+      const height = Number(piece.heightCm) || 0;
+      const thickness = Number(piece.thicknessMm) || 20;
+      const pricePerM2 = marble?.pricePerM2 ?? 0;
+      return {
+        queryKey: [
+          'formula-preview-public',
+          width,
+          height,
+          thickness,
+          pricePerM2,
+          piece.includeAcabamento,
+          piece.includeInstalacao,
+        ],
+        queryFn: async () =>
+          (
+            await publicApi.post('/api/formula/preview/public', {
+              width,
+              height,
+              thickness,
+              pricePerM2,
+              quantity: 1,
+              includeAcabamento: piece.includeAcabamento,
+              includeInstalacao: piece.includeInstalacao,
+            })
+          ).data as { result: number },
+        enabled: Boolean(piece.marbleId && width > 0 && height > 0),
+        staleTime: 60 * 1000,
+      };
+    }),
+  });
+
+  const piecesTotal = pieces.reduce(
+    (sum, p, idx) => sum + pieceBreakdown(p, marbles, previewQueries[idx]?.data?.result).total,
+    0
+  );
   const freight = freightRate && distanceKm ? Number(distanceKm) * freightRate : 0;
   const grandTotal = piecesTotal + freight;
 
@@ -404,7 +452,11 @@ export function QuoteForm() {
               {pieces.length > 0 && (
                 <div className="space-y-3 mb-6">
                   {pieces.map((piece, idx) => {
-                    const { marble, breakdown, extrasTotal, total } = pieceBreakdown(piece, marbles);
+                    const { marble, breakdown, extrasTotal, total } = pieceBreakdown(
+                      piece,
+                      marbles,
+                      previewQueries[idx]?.data?.result
+                    );
                     return (
                       <div key={piece.key} className="glass-panel p-4">
                         <div className="flex items-start justify-between gap-3">
