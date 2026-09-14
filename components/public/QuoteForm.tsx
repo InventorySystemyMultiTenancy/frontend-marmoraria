@@ -61,22 +61,33 @@ const emptyDraft: PieceDraft = {
   includeInstalacao: false,
 };
 
-// previewUnitPrice vem da fórmula ativa de verdade (POST /formula/preview/public)
-// — a mesma que o backend usa ao salvar o orçamento e gerar o PDF. Enquanto a
-// prévia ainda não voltou, cai numa estimativa local (breakdown.unitPrice) só
-// pra não piscar R$ 0,00; o breakdown por linha (material/acabamento/instalação)
-// continua sendo só informativo.
-function pieceBreakdown(piece: PieceDraft, marbles: Marble[], previewUnitPrice?: number) {
+interface PreviewResult {
+  result: number;
+  materialValue: number;
+  acabamentoValue: number;
+  instalacaoValue: number;
+}
+
+// preview vem da fórmula ativa de verdade (POST /formula/preview/public) — a
+// mesma que o backend usa ao salvar o orçamento e gerar o PDF, já detalhada em
+// material/acabamento/instalação. Enquanto a prévia ainda não voltou, cai numa
+// estimativa local só pra não piscar R$ 0,00. Os valores por linha (material/
+// acabamento/instalação) já vêm multiplicados pela quantidade, pra bater com o
+// "Subtotal da peça" exibido.
+function pieceBreakdown(piece: PieceDraft, marbles: Marble[], preview?: PreviewResult) {
   const marble = marbles.find((m) => m.id === piece.marbleId);
   const width = Number(piece.widthCm) || 0;
   const height = Number(piece.heightCm) || 0;
   const qty = Number(piece.quantity) || 0;
   const price = marble?.pricePerM2 ?? 0;
-  const breakdown = calcPieceBreakdown(width, height, price, piece.includeAcabamento, piece.includeInstalacao);
+  const localBreakdown = calcPieceBreakdown(width, height, price, piece.includeAcabamento, piece.includeInstalacao);
   const extrasTotal = piece.extras.reduce((sum, ex) => sum + (Number(ex.price) || 0), 0);
-  const unitPrice = previewUnitPrice ?? breakdown.unitPrice;
+  const unitPrice = preview?.result ?? localBreakdown.unitPrice;
+  const materialValue = (preview?.materialValue ?? localBreakdown.material) * qty;
+  const acabamentoValue = (preview?.acabamentoValue ?? localBreakdown.acabamento) * qty;
+  const instalacaoValue = (preview?.instalacaoValue ?? localBreakdown.instalacao) * qty;
   const total = unitPrice * qty + extrasTotal;
-  return { marble, breakdown, extrasTotal, total };
+  return { marble, areaM2: localBreakdown.areaM2, materialValue, acabamentoValue, instalacaoValue, extrasTotal, total };
 }
 
 export function QuoteForm() {
@@ -146,7 +157,7 @@ export function QuoteForm() {
               includeAcabamento: piece.includeAcabamento,
               includeInstalacao: piece.includeInstalacao,
             })
-          ).data as { result: number },
+          ).data as PreviewResult,
         enabled: Boolean(piece.marbleId && width > 0 && height > 0),
         staleTime: 60 * 1000,
       };
@@ -154,7 +165,7 @@ export function QuoteForm() {
   });
 
   const piecesTotal = pieces.reduce(
-    (sum, p, idx) => sum + pieceBreakdown(p, marbles, previewQueries[idx]?.data?.result).total,
+    (sum, p, idx) => sum + pieceBreakdown(p, marbles, previewQueries[idx]?.data).total,
     0
   );
   const freight = freightRate && distanceKm ? Number(distanceKm) * freightRate : 0;
@@ -452,11 +463,8 @@ export function QuoteForm() {
               {pieces.length > 0 && (
                 <div className="space-y-3 mb-6">
                   {pieces.map((piece, idx) => {
-                    const { marble, breakdown, extrasTotal, total } = pieceBreakdown(
-                      piece,
-                      marbles,
-                      previewQueries[idx]?.data?.result
-                    );
+                    const { marble, areaM2, materialValue, acabamentoValue, instalacaoValue, extrasTotal, total } =
+                      pieceBreakdown(piece, marbles, previewQueries[idx]?.data);
                     return (
                       <div key={piece.key} className="glass-panel p-4">
                         <div className="flex items-start justify-between gap-3">
@@ -480,14 +488,14 @@ export function QuoteForm() {
 
                         <div className="mt-3 text-xs text-white/60 space-y-0.5">
                           <div className="flex justify-between">
-                            <span>Material ({breakdown.areaM2.toFixed(2)} m²)</span>
-                            <span>{marble?.pricePerM2 != null ? formatCurrency(breakdown.material) : 'sob consulta'}</span>
+                            <span>Material ({areaM2.toFixed(2)} m²)</span>
+                            <span>{marble?.pricePerM2 != null ? formatCurrency(materialValue) : 'sob consulta'}</span>
                           </div>
-                          {piece.includeAcabamento && (
-                            <div className="flex justify-between"><span>Acabamento/frontão ({breakdown.perimeterMl.toFixed(2)}ml)</span><span>{formatCurrency(breakdown.acabamento)}</span></div>
+                          {(piece.includeAcabamento || acabamentoValue > 0) && (
+                            <div className="flex justify-between"><span>Acabamento/frontão</span><span>{formatCurrency(acabamentoValue)}</span></div>
                           )}
-                          {piece.includeInstalacao && (
-                            <div className="flex justify-between"><span>Instalação ({breakdown.threeSidePerimeterMl.toFixed(2)}ml)</span><span>{formatCurrency(breakdown.instalacao)}</span></div>
+                          {(piece.includeInstalacao || instalacaoValue > 0) && (
+                            <div className="flex justify-between"><span>Instalação</span><span>{formatCurrency(instalacaoValue)}</span></div>
                           )}
                           {extrasTotal > 0 && <div className="flex justify-between"><span>Extras</span><span>{formatCurrency(extrasTotal)}</span></div>}
                           <div className="flex justify-between text-white font-semibold pt-1 border-t border-white/10 mt-1">

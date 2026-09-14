@@ -20,8 +20,11 @@ export function calcPieceBreakdown(
   widthCm: number,
   heightCm: number,
   pricePerM2: number,
-  includeAcabamento = true,
-  includeInstalacao = true
+  // Default false (não incluir): esses custos só entram se o cliente/admin
+  // marcar a opção — um chamador que esqueça de passar o parâmetro não deve
+  // cobrar acabamento/instalação em silêncio.
+  includeAcabamento = false,
+  includeInstalacao = false
 ): PieceBreakdown {
   const widthM = widthCm / 100;
   const heightM = heightCm / 100;

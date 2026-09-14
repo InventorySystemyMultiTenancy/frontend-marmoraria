@@ -18,6 +18,13 @@ interface ExtraInput {
   price: string;
 }
 
+interface PreviewResult {
+  result: number;
+  materialValue: number;
+  acabamentoValue: number;
+  instalacaoValue: number;
+}
+
 interface BuilderItem {
   marbleId: string;
   widthCm: string;
@@ -105,7 +112,7 @@ export function QuoteBuilder() {
               includeAcabamento: item.includeAcabamento,
               includeInstalacao: item.includeInstalacao,
             })
-          ).data as { result: number },
+          ).data as PreviewResult,
         enabled: Boolean(item.marbleId && width > 0 && height > 0),
         staleTime: 60 * 1000,
       };
@@ -141,6 +148,23 @@ export function QuoteBuilder() {
     const height = Number(item.heightCm) || 0;
     const price = marble?.pricePerM2 ?? 0;
     return calcPieceBreakdown(width, height, price, item.includeAcabamento, item.includeInstalacao).unitPrice;
+  }
+
+  // Detalha material x acabamento/frontão x instalação, já multiplicado pela
+  // quantidade — mostrado como explicação abaixo do subtotal de cada item.
+  function calcItemBreakdown(idx: number, item: BuilderItem) {
+    const marble = marbles.find((m) => m.id === item.marbleId);
+    const width = Number(item.widthCm) || 0;
+    const height = Number(item.heightCm) || 0;
+    const price = marble?.pricePerM2 ?? 0;
+    const qty = Number(item.quantity) || 0;
+    const preview = previewQueries[idx]?.data;
+    const local = calcPieceBreakdown(width, height, price, item.includeAcabamento, item.includeInstalacao);
+    return {
+      materialValue: (preview?.materialValue ?? local.material) * qty,
+      acabamentoValue: (preview?.acabamentoValue ?? local.acabamento) * qty,
+      instalacaoValue: (preview?.instalacaoValue ?? local.instalacao) * qty,
+    };
   }
 
   function calcItemExtrasTotal(item: BuilderItem) {
@@ -349,12 +373,24 @@ export function QuoteBuilder() {
                 ))}
               </div>
 
-              <p className="text-sm text-right text-marble-gray">
-                Subtotal do item: <span className="font-semibold text-marble-dark">{formatCurrency(calcItemTotal(idx, item))}</span>
-                {item.marbleId && marbles.find((m) => m.id === item.marbleId)?.pricePerM2 == null && (
-                  <span className="block text-xs text-marble-gray/70">Aproximadamente (preço sob consulta)</span>
-                )}
-              </p>
+              <div className="text-right">
+                {(item.includeAcabamento || item.includeInstalacao) && item.marbleId && (() => {
+                  const { materialValue, acabamentoValue, instalacaoValue } = calcItemBreakdown(idx, item);
+                  return (
+                    <p className="text-xs text-marble-gray/70">
+                      Material: {formatCurrency(materialValue)}
+                      {item.includeAcabamento && ` · Acabamento/frontão: ${formatCurrency(acabamentoValue)}`}
+                      {item.includeInstalacao && ` · Instalação: ${formatCurrency(instalacaoValue)}`}
+                    </p>
+                  );
+                })()}
+                <p className="text-sm">
+                  Subtotal do item: <span className="font-semibold text-marble-dark">{formatCurrency(calcItemTotal(idx, item))}</span>
+                  {item.marbleId && marbles.find((m) => m.id === item.marbleId)?.pricePerM2 == null && (
+                    <span className="block text-xs text-marble-gray/70">Aproximadamente (preço sob consulta)</span>
+                  )}
+                </p>
+              </div>
             </div>
           ))}
         </CardContent>

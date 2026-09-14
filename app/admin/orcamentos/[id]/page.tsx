@@ -2,9 +2,9 @@
 
 import { use, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Download, Check, X } from 'lucide-react';
+import { Download, Check, X, Pencil } from 'lucide-react';
 import { api } from '@/lib/api';
-import { Quote, QuoteStatus, QUOTE_STATUS_LABELS } from '@/types';
+import { Quote, QuoteItem, QuoteStatus, QUOTE_STATUS_LABELS } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input, Label } from '@/components/ui/input';
@@ -22,6 +22,10 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
   const [showCpfDialog, setShowCpfDialog] = useState(false);
   const [cpfInput, setCpfInput] = useState('');
   const [cpfDialogError, setCpfDialogError] = useState<string | null>(null);
+
+  const [editingItem, setEditingItem] = useState<QuoteItem | null>(null);
+  const [editValues, setEditValues] = useState({ materialValue: '', acabamentoValue: '', instalacaoValue: '' });
+  const [editError, setEditError] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['quote', id],
@@ -45,12 +49,42 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
     },
   });
 
+  // Só o MASTER pode sobrescrever o valor calculado de material/acabamento/
+  // instalação de um item — inclusive em orçamentos já aprovados.
+  const editItemValuesMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingItem) return;
+      await api.patch(`/quotes/${id}/items/${editingItem.id}/values`, {
+        materialValue: Number(editValues.materialValue),
+        acabamentoValue: Number(editValues.acabamentoValue),
+        instalacaoValue: Number(editValues.instalacaoValue),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quote', id] });
+      setEditingItem(null);
+      setEditError(null);
+    },
+    onError: () => setEditError('Não foi possível salvar os valores.'),
+  });
+
   if (isLoading || !data) {
     return <p className="text-gray-400">Carregando...</p>;
   }
 
   const canApprove = hasPermission(user, 'quotes_approve');
+  const isMaster = user?.role === 'MASTER';
   const hasCpfCnpj = Boolean(data.clientCpfCnpj || data.client?.cpfCnpj);
+
+  function openEditItem(item: QuoteItem) {
+    setEditingItem(item);
+    setEditValues({
+      materialValue: String(item.materialValue ?? 0),
+      acabamentoValue: String(item.acabamentoValue ?? 0),
+      instalacaoValue: String(item.instalacaoValue ?? 0),
+    });
+    setEditError(null);
+  }
 
   function handleApproveClick() {
     if (hasCpfCnpj) {
@@ -121,30 +155,52 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
                 <th className="px-5 py-3 text-left font-medium text-gray-600">Área</th>
                 <th className="px-5 py-3 text-left font-medium text-gray-600">Qtd.</th>
                 <th className="px-5 py-3 text-left font-medium text-gray-600">Total</th>
+                {isMaster && <th className="px-5 py-3"></th>}
               </tr>
             </thead>
             <tbody>
-              {data.items.map((item) => (
-                <tr key={item.id} className="border-b border-gray-50 last:border-0">
-                  <td className="px-5 py-3">
-                    {item.marble?.name}
-                    {item.extras && item.extras.length > 0 && (
-                      <div className="text-xs text-gray-400 mt-0.5">
-                        + {item.extras.map((ex) => `${ex.name} (${formatCurrency(ex.price)})`).join(', ')}
-                      </div>
+              {data.items.map((item) => {
+                const hasServiceBreakdown = item.includeAcabamento || item.includeInstalacao;
+                return (
+                  <tr key={item.id} className="border-b border-gray-50 last:border-0">
+                    <td className="px-5 py-3">
+                      {item.marble?.name}
+                      {hasServiceBreakdown && (
+                        <div className="text-xs text-gray-400 mt-0.5">
+                          Material: {formatCurrency((item.materialValue ?? 0) * item.quantity)}
+                          {item.includeAcabamento && ` · Acabamento/frontão: ${formatCurrency((item.acabamentoValue ?? 0) * item.quantity)}`}
+                          {item.includeInstalacao && ` · Instalação: ${formatCurrency((item.instalacaoValue ?? 0) * item.quantity)}`}
+                        </div>
+                      )}
+                      {item.extras && item.extras.length > 0 && (
+                        <div className="text-xs text-gray-400 mt-0.5">
+                          + {item.extras.map((ex) => `${ex.name} (${formatCurrency(ex.price)})`).join(', ')}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-5 py-3">{item.widthCm}x{item.heightCm}cm ({item.thicknessMm}mm)</td>
+                    <td className="px-5 py-3">{item.areaM2.toFixed(2)} m²</td>
+                    <td className="px-5 py-3">{item.quantity}</td>
+                    <td className="px-5 py-3">
+                      {formatCurrency(item.totalPrice)}
+                      {item.marble?.pricePerM2 == null && (
+                        <div className="text-xs text-gray-400 mt-0.5">Aproximadamente (preço sob consulta)</div>
+                      )}
+                    </td>
+                    {isMaster && (
+                      <td className="px-5 py-3">
+                        <button
+                          onClick={() => openEditItem(item)}
+                          className="text-gray-400 hover:text-marble-gold cursor-pointer"
+                          aria-label="Editar valores do item"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      </td>
                     )}
-                  </td>
-                  <td className="px-5 py-3">{item.widthCm}x{item.heightCm}cm ({item.thicknessMm}mm)</td>
-                  <td className="px-5 py-3">{item.areaM2.toFixed(2)} m²</td>
-                  <td className="px-5 py-3">{item.quantity}</td>
-                  <td className="px-5 py-3">
-                    {formatCurrency(item.totalPrice)}
-                    {item.marble?.pricePerM2 == null && (
-                      <div className="text-xs text-gray-400 mt-0.5">Aproximadamente (preço sob consulta)</div>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </CardContent>
@@ -183,6 +239,47 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
           <Button variant="outline" onClick={() => setShowCpfDialog(false)}>Cancelar</Button>
           <Button variant="gold" onClick={confirmCpfAndApprove} disabled={statusMutation.isPending}>
             {statusMutation.isPending ? 'Aprovando...' : 'Confirmar e aprovar'}
+          </Button>
+        </div>
+      </Dialog>
+
+      <Dialog open={editingItem != null} onClose={() => setEditingItem(null)}>
+        <h2 className="text-lg font-semibold text-marble-dark mb-1">Editar valores do item</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Sobrescreve o valor calculado pela fórmula (por peça, antes de multiplicar pela quantidade). Deixe como
+          está para manter o valor base.
+        </p>
+        <div className="space-y-3">
+          <div>
+            <Label>Material (R$)</Label>
+            <Input
+              type="number"
+              value={editValues.materialValue}
+              onChange={(e) => setEditValues((v) => ({ ...v, materialValue: e.target.value }))}
+            />
+          </div>
+          <div>
+            <Label>Acabamento/frontão (R$)</Label>
+            <Input
+              type="number"
+              value={editValues.acabamentoValue}
+              onChange={(e) => setEditValues((v) => ({ ...v, acabamentoValue: e.target.value }))}
+            />
+          </div>
+          <div>
+            <Label>Instalação (R$)</Label>
+            <Input
+              type="number"
+              value={editValues.instalacaoValue}
+              onChange={(e) => setEditValues((v) => ({ ...v, instalacaoValue: e.target.value }))}
+            />
+          </div>
+        </div>
+        {editError && <p className="text-xs text-red-600 mt-2">{editError}</p>}
+        <div className="flex justify-end gap-2 pt-4">
+          <Button variant="outline" onClick={() => setEditingItem(null)}>Cancelar</Button>
+          <Button variant="gold" onClick={() => editItemValuesMutation.mutate()} disabled={editItemValuesMutation.isPending}>
+            {editItemValuesMutation.isPending ? 'Salvando...' : 'Salvar'}
           </Button>
         </div>
       </Dialog>

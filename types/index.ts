@@ -185,6 +185,12 @@ export interface QuoteItem {
   areaM2: number;
   unitPrice: number;
   totalPrice: number;
+  includeAcabamento?: boolean;
+  includeInstalacao?: boolean;
+  materialValue?: number;
+  acabamentoValue?: number;
+  instalacaoValue?: number;
+  valuesOverridden?: boolean;
   extras?: { name: string; price: number }[];
 }
 
