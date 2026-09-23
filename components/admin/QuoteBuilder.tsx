@@ -103,7 +103,7 @@ export function QuoteBuilder() {
         ],
         queryFn: async () =>
           (
-            await api.post('/formula/preview/public', {
+            await api.post('/formula/preview', {
               width,
               height,
               thickness,
@@ -136,7 +136,7 @@ export function QuoteBuilder() {
     updateItem(idx, { extras: items[idx].extras.filter((_, i) => i !== extraIdx) });
   }
 
-  // Preço unitário do item: usa o resultado da fórmula ativa (POST /formula/preview/public),
+  // Preço unitário do item: usa o resultado da fórmula ativa (POST /formula/preview),
   // que é a mesma conta que o backend faz ao salvar o orçamento — assim a prévia
   // bate com o valor que sai no PDF. Enquanto a consulta ainda não voltou (ex:
   // digitando agora mesmo), cai numa estimativa local só pra não piscar R$ 0,00.
@@ -232,6 +232,20 @@ export function QuoteBuilder() {
     }
     if (items.some((i) => !i.marbleId || !i.widthCm || !i.heightCm)) {
       setError('Preencha mármore, largura e altura de todos os itens.');
+      return;
+    }
+    // Mármore sob consulta entra com R$ 0/m² — o orçamento sai com valor bem
+    // abaixo do real, então confirma antes de criar oficialmente.
+    const priceOnRequest = items
+      .map((i) => marbles.find((m) => m.id === i.marbleId))
+      .filter((m): m is Marble => Boolean(m && m.pricePerM2 == null));
+    if (
+      priceOnRequest.length > 0 &&
+      !window.confirm(
+        `${Array.from(new Set(priceOnRequest.map((m) => m.name))).join(', ')} tem preço sob consulta e NÃO será incluído no valor.\n\n` +
+          'O orçamento e o PDF sairão com um valor bem abaixo do real (marcado como incompleto). Deseja criar mesmo assim?'
+      )
+    ) {
       return;
     }
     createMutation.mutate();

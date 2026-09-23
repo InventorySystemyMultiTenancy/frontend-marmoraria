@@ -3,7 +3,8 @@
 // instalação por metro linear (comprimento + as 2 laterais). O cálculo OFICIAL
 // é sempre feito no backend usando a fórmula configurada em /admin/formula —
 // isso aqui é só para dar uma estimativa em tempo real enquanto o usuário digita.
-export const ACABAMENTO_RATE_PER_ML = 110;
+// Metro linear de acabamento/frontão = 20% do preço do m² do material.
+export const ACABAMENTO_PCT_OF_M2 = 0.2;
 export const INSTALACAO_RATE_PER_ML = 150;
 
 export interface PieceBreakdown {
@@ -33,7 +34,7 @@ export function calcPieceBreakdown(
   const threeSidePerimeterMl = widthM + 2 * heightM;
 
   const material = areaM2 * pricePerM2;
-  const acabamento = includeAcabamento ? perimeterMl * ACABAMENTO_RATE_PER_ML : 0;
+  const acabamento = includeAcabamento ? perimeterMl * pricePerM2 * ACABAMENTO_PCT_OF_M2 : 0;
   const instalacao = includeInstalacao ? threeSidePerimeterMl * INSTALACAO_RATE_PER_ML : 0;
 
   return {

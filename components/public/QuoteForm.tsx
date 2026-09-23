@@ -63,17 +63,13 @@ const emptyDraft: PieceDraft = {
 
 interface PreviewResult {
   result: number;
-  materialValue: number;
-  acabamentoValue: number;
-  instalacaoValue: number;
 }
 
 // preview vem da fórmula ativa de verdade (POST /formula/preview/public) — a
-// mesma que o backend usa ao salvar o orçamento e gerar o PDF, já detalhada em
-// material/acabamento/instalação. Enquanto a prévia ainda não voltou, cai numa
-// estimativa local só pra não piscar R$ 0,00. Os valores por linha (material/
-// acabamento/instalação) já vêm multiplicados pela quantidade, pra bater com o
-// "Subtotal da peça" exibido.
+// mesma que o backend usa ao salvar o orçamento e gerar o PDF. O endpoint
+// público só devolve o total: o valor de acabamento/frontão e instalação não é
+// mostrado ao cliente (só o admin vê). Enquanto a prévia ainda não voltou, cai
+// numa estimativa local só pra não piscar R$ 0,00.
 function pieceBreakdown(piece: PieceDraft, marbles: Marble[], preview?: PreviewResult) {
   const marble = marbles.find((m) => m.id === piece.marbleId);
   const width = Number(piece.widthCm) || 0;
@@ -83,11 +79,15 @@ function pieceBreakdown(piece: PieceDraft, marbles: Marble[], preview?: PreviewR
   const localBreakdown = calcPieceBreakdown(width, height, price, piece.includeAcabamento, piece.includeInstalacao);
   const extrasTotal = piece.extras.reduce((sum, ex) => sum + (Number(ex.price) || 0), 0);
   const unitPrice = preview?.result ?? localBreakdown.unitPrice;
-  const materialValue = (preview?.materialValue ?? localBreakdown.material) * qty;
-  const acabamentoValue = (preview?.acabamentoValue ?? localBreakdown.acabamento) * qty;
-  const instalacaoValue = (preview?.instalacaoValue ?? localBreakdown.instalacao) * qty;
   const total = unitPrice * qty + extrasTotal;
-  return { marble, areaM2: localBreakdown.areaM2, materialValue, acabamentoValue, instalacaoValue, extrasTotal, total };
+  return { marble, areaM2: localBreakdown.areaM2, extrasTotal, total };
+}
+
+function servicesLabel(piece: PieceDraft) {
+  const services: string[] = [];
+  if (piece.includeAcabamento) services.push('acabamento/frontão');
+  if (piece.includeInstalacao) services.push('instalação');
+  return services.length ? `Inclui ${services.join(' e ')} — já somado ao subtotal` : null;
 }
 
 export function QuoteForm() {
@@ -170,6 +170,18 @@ export function QuoteForm() {
   );
   const freight = freightRate && distanceKm ? Number(distanceKm) * freightRate : 0;
   const grandTotal = piecesTotal + freight;
+
+  // Mármores com preço sob consulta entram no cálculo com R$ 0/m², então o
+  // orçamento sai com valor bem abaixo do real — pede confirmação antes de criar.
+  const priceOnRequestNames = Array.from(
+    new Set(
+      pieces
+        .map((p) => marbles.find((m) => m.id === p.marbleId))
+        .filter((m): m is Marble => Boolean(m && m.pricePerM2 == null))
+        .map((m) => m.name)
+    )
+  );
+  const [confirmPriceOnRequestOpen, setConfirmPriceOnRequestOpen] = useState(false);
 
   const aiMutation = useMutation({
     mutationFn: async () => {
@@ -299,6 +311,10 @@ export function QuoteForm() {
     }
     if (step === 2) {
       if (!name || !phone) return setError('Informe seu nome e telefone.');
+      if (priceOnRequestNames.length > 0) {
+        setConfirmPriceOnRequestOpen(true);
+        return;
+      }
       submitMutation.mutate();
       return;
     }
@@ -463,8 +479,8 @@ export function QuoteForm() {
               {pieces.length > 0 && (
                 <div className="space-y-3 mb-6">
                   {pieces.map((piece, idx) => {
-                    const { marble, areaM2, materialValue, acabamentoValue, instalacaoValue, extrasTotal, total } =
-                      pieceBreakdown(piece, marbles, previewQueries[idx]?.data);
+                    const { marble, areaM2, extrasTotal, total } = pieceBreakdown(piece, marbles, previewQueries[idx]?.data);
+                    const services = servicesLabel(piece);
                     return (
                       <div key={piece.key} className="glass-panel p-4">
                         <div className="flex items-start justify-between gap-3">
@@ -489,14 +505,9 @@ export function QuoteForm() {
                         <div className="mt-3 text-xs text-white/60 space-y-0.5">
                           <div className="flex justify-between">
                             <span>Material ({areaM2.toFixed(2)} m²)</span>
-                            <span>{marble?.pricePerM2 != null ? formatCurrency(materialValue) : 'sob consulta'}</span>
+                            {marble?.pricePerM2 == null && <span>sob consulta</span>}
                           </div>
-                          {(piece.includeAcabamento || acabamentoValue > 0) && (
-                            <div className="flex justify-between"><span>Acabamento/frontão</span><span>{formatCurrency(acabamentoValue)}</span></div>
-                          )}
-                          {(piece.includeInstalacao || instalacaoValue > 0) && (
-                            <div className="flex justify-between"><span>Instalação</span><span>{formatCurrency(instalacaoValue)}</span></div>
-                          )}
+                          {services && <p className="text-marble-gold/80">{services}</p>}
                           {extrasTotal > 0 && <div className="flex justify-between"><span>Extras</span><span>{formatCurrency(extrasTotal)}</span></div>}
                           <div className="flex justify-between text-white font-semibold pt-1 border-t border-white/10 mt-1">
                             <span>Subtotal da peça{marble?.pricePerM2 == null ? ' (+ material)' : ''}</span>
@@ -699,6 +710,12 @@ export function QuoteForm() {
               <p className="text-white/60 mb-8">
                 {piecesTotal > 0 ? `Valor estimado: ${formatCurrency(grandTotal)}` : 'Nossa equipe vai retornar com os valores em breve.'}
               </p>
+              {priceOnRequestNames.length > 0 && (
+                <p className="text-sm text-red-300 border border-red-400/40 bg-red-500/10 rounded-lg p-3 mb-8 -mt-4">
+                  Valor incompleto: o preço de {priceOnRequestNames.join(', ')} é sob consulta e não está incluído. Nossa
+                  equipe vai retornar com o valor final.
+                </p>
+              )}
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <a href={`/api/pdf/quote/${quoteId}`} target="_blank" rel="noreferrer">
                   <span className="inline-flex items-center px-6 py-3 rounded-full bg-marble-gold text-marble-dark font-semibold cursor-pointer">
@@ -717,6 +734,37 @@ export function QuoteForm() {
       </AnimatePresence>
 
       {error && <p className="text-red-400 text-sm mt-4">{error}</p>}
+
+      {confirmPriceOnRequestOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" role="dialog" aria-modal="true">
+          <div className="glass-panel bg-marble-dark max-w-md w-full p-6 space-y-4">
+            <h3 className="text-lg font-bold text-white">Material com preço sob consulta</h3>
+            <p className="text-sm text-white/70">
+              O preço de <span className="text-white font-medium">{priceOnRequestNames.join(', ')}</span> é sob consulta
+              e <strong className="text-white">não será incluído</strong> no valor. O orçamento e o PDF sairão com um
+              valor bem abaixo do real, marcados como incompletos, e nossa equipe retornará com o valor final.
+            </p>
+            <p className="text-sm text-white/70">Deseja criar o orçamento mesmo assim?</p>
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button
+                onClick={() => {
+                  setConfirmPriceOnRequestOpen(false);
+                  submitMutation.mutate();
+                }}
+                className="flex-1 px-4 py-2.5 rounded-full bg-marble-gold text-marble-dark font-semibold text-sm cursor-pointer"
+              >
+                Sim, criar orçamento
+              </button>
+              <button
+                onClick={() => setConfirmPriceOnRequestOpen(false)}
+                className="flex-1 px-4 py-2.5 rounded-full border border-white/20 text-white/70 text-sm cursor-pointer"
+              >
+                Voltar e revisar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {step > 0 && step < STEPS.length - 1 && (
         <div className="flex justify-between mt-8">
