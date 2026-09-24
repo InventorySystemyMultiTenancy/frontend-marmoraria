@@ -27,6 +27,10 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
   const [editValues, setEditValues] = useState({ materialValue: '', acabamentoValue: '', instalacaoValue: '' });
   const [editError, setEditError] = useState<string | null>(null);
 
+  const [showDiscountDialog, setShowDiscountDialog] = useState(false);
+  const [discountInput, setDiscountInput] = useState({ discount: '', discountPct: '' });
+  const [discountError, setDiscountError] = useState<string | null>(null);
+
   const { data, isLoading } = useQuery({
     queryKey: ['quote', id],
     queryFn: async () => (await api.get(`/quotes/${id}`)).data.quote as Quote,
@@ -68,12 +72,56 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
     onError: () => setEditError('Não foi possível salvar os valores.'),
   });
 
+  const discountMutation = useMutation({
+    mutationFn: async () =>
+      api.patch(`/quotes/${id}/discount`, {
+        discount: Number(discountInput.discount || 0),
+        discountPct: Number(discountInput.discountPct || 0),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quote', id] });
+      setShowDiscountDialog(false);
+      setDiscountError(null);
+    },
+    onError: (error: unknown) =>
+      setDiscountError(
+        (error as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+          'Não foi possível salvar o desconto.'
+      ),
+  });
+
   if (isLoading || !data) {
     return <p className="text-gray-400">Carregando...</p>;
   }
 
   const canApprove = hasPermission(user, 'quotes_approve');
   const isMaster = user?.role === 'MASTER';
+  const canEditDiscount = hasPermission(user, 'quotes_edit');
+
+  // Prévia do novo total enquanto o admin digita o desconto no diálogo.
+  const discountValue = Number(discountInput.discount || 0);
+  const discountPctValue = Number(discountInput.discountPct || 0);
+  const previewDiscountTotal = discountValue + (data.subtotal * discountPctValue) / 100;
+  const previewTotal = Math.max(0, data.subtotal - previewDiscountTotal + data.freight);
+
+  function openDiscountDialog() {
+    if (!data) return;
+    setDiscountInput({ discount: String(data.discount ?? 0), discountPct: String(data.discountPct ?? 0) });
+    setDiscountError(null);
+    setShowDiscountDialog(true);
+  }
+
+  function saveDiscount() {
+    if (discountValue < 0 || discountPctValue < 0 || discountPctValue > 100) {
+      setDiscountError('Informe um desconto válido (R$ ≥ 0 e % entre 0 e 100).');
+      return;
+    }
+    if (previewDiscountTotal > data!.subtotal) {
+      setDiscountError('O desconto não pode ser maior que o subtotal.');
+      return;
+    }
+    discountMutation.mutate();
+  }
   const hasCpfCnpj = Boolean(data.clientCpfCnpj || data.client?.cpfCnpj);
 
   function openEditItem(item: QuoteItem) {
@@ -209,7 +257,22 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
       <Card>
         <CardContent className="space-y-1 text-sm">
           <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(data.subtotal)}</span></div>
-          <div className="flex justify-between"><span>Desconto</span><span>{formatCurrency(data.discount + (data.subtotal * data.discountPct) / 100)}</span></div>
+          <div className="flex justify-between items-center">
+            <span className="flex items-center gap-2">
+              Desconto
+              {data.discountPct > 0 && <span className="text-xs text-gray-400">({data.discountPct}%{data.discount > 0 ? ` + ${formatCurrency(data.discount)}` : ''})</span>}
+              {canEditDiscount && (
+                <button
+                  onClick={openDiscountDialog}
+                  className="text-gray-400 hover:text-marble-gold cursor-pointer"
+                  aria-label="Editar desconto"
+                >
+                  <Pencil size={13} />
+                </button>
+              )}
+            </span>
+            <span>{formatCurrency(data.discount + (data.subtotal * data.discountPct) / 100)}</span>
+          </div>
           {data.freight > 0 && (
             <div className="flex justify-between">
               <span>Frete{data.freightDistanceKm ? ` (${data.freightDistanceKm}km)` : ''}</span>
@@ -239,6 +302,54 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
           <Button variant="outline" onClick={() => setShowCpfDialog(false)}>Cancelar</Button>
           <Button variant="gold" onClick={confirmCpfAndApprove} disabled={statusMutation.isPending}>
             {statusMutation.isPending ? 'Aprovando...' : 'Confirmar e aprovar'}
+          </Button>
+        </div>
+      </Dialog>
+
+      <Dialog open={showDiscountDialog} onClose={() => setShowDiscountDialog(false)}>
+        <h2 className="text-lg font-semibold text-marble-dark mb-1">Desconto do orçamento</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Informe o desconto em reais, em porcentagem ou os dois. O total do orçamento e do PDF é recalculado.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <Label>Desconto (R$)</Label>
+            <Input
+              type="number"
+              min={0}
+              value={discountInput.discount}
+              onChange={(e) => setDiscountInput((v) => ({ ...v, discount: e.target.value }))}
+            />
+          </div>
+          <div>
+            <Label>Desconto (%)</Label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={discountInput.discountPct}
+              onChange={(e) => setDiscountInput((v) => ({ ...v, discountPct: e.target.value }))}
+            />
+          </div>
+        </div>
+        <div className="text-sm text-gray-600 mt-4 space-y-0.5">
+          <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(data.subtotal)}</span></div>
+          <div className="flex justify-between"><span>Desconto</span><span>- {formatCurrency(previewDiscountTotal)}</span></div>
+          {data.freight > 0 && (
+            <div className="flex justify-between"><span>Frete</span><span>{formatCurrency(data.freight)}</span></div>
+          )}
+          <div className="flex justify-between font-semibold text-marble-dark pt-1 border-t border-gray-100">
+            <span>Novo total</span><span>{formatCurrency(previewTotal)}</span>
+          </div>
+        </div>
+        {data.status === 'APPROVED' && (
+          <p className="text-xs text-amber-600 mt-2">Orçamento já aprovado: o lançamento financeiro do pedido também será atualizado.</p>
+        )}
+        {discountError && <p className="text-xs text-red-600 mt-2">{discountError}</p>}
+        <div className="flex justify-end gap-2 pt-4">
+          <Button variant="outline" onClick={() => setShowDiscountDialog(false)}>Cancelar</Button>
+          <Button variant="gold" onClick={saveDiscount} disabled={discountMutation.isPending}>
+            {discountMutation.isPending ? 'Salvando...' : 'Aplicar desconto'}
           </Button>
         </div>
       </Dialog>
