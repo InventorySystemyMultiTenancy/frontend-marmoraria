@@ -213,6 +213,10 @@ export interface Quote {
   freightDistanceKm?: number | null;
   total: number;
   showExtras?: boolean;
+  projectName?: string | null;
+  paymentConditions?: string | null;
+  paymentTerm?: string | null;
+  deliveryTerm?: string | null;
   notes?: string | null;
   validUntil?: string | null;
   pdfUrl?: string | null;

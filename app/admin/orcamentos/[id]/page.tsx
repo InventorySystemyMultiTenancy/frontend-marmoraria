@@ -266,6 +266,18 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
         </CardContent>
       </Card>
 
+      {(data.projectName || data.paymentConditions || data.paymentTerm || data.deliveryTerm) && (
+        <Card>
+          <CardHeader><CardTitle>Projeto e condições</CardTitle></CardHeader>
+          <CardContent className="text-sm space-y-1 whitespace-pre-line">
+            {data.projectName && <p><strong>Projeto:</strong> {data.projectName}</p>}
+            {data.paymentConditions && <p><strong>Formas de pagamento:</strong> {data.paymentConditions}</p>}
+            {data.paymentTerm && <p><strong>Prazo de pagamento:</strong> {data.paymentTerm}</p>}
+            {data.deliveryTerm && <p><strong>Prazo para ficar pronto:</strong> {data.deliveryTerm}</p>}
+          </CardContent>
+        </Card>
+      )}
+
       {data.notes && (
         <Card>
           <CardHeader><CardTitle>Observações</CardTitle></CardHeader>

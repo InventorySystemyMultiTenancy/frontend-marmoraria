@@ -65,6 +65,10 @@ export function QuoteBuilder() {
   const [freightManual, setFreightManual] = useState('');
   const [notes, setNotes] = useState('');
   const [showExtras, setShowExtras] = useState(false);
+  const [projectName, setProjectName] = useState('');
+  const [paymentConditions, setPaymentConditions] = useState('');
+  const [paymentTerm, setPaymentTerm] = useState('');
+  const [deliveryTerm, setDeliveryTerm] = useState('');
   const [items, setItems] = useState<BuilderItem[]>([{ ...emptyItem }]);
   const [error, setError] = useState<string | null>(null);
 
@@ -213,6 +217,10 @@ export function QuoteBuilder() {
         freight: computedFreight,
         freightDistanceKm: freightDistanceKm ? Number(freightDistanceKm) : undefined,
         showExtras,
+        projectName: projectName.trim() || undefined,
+        paymentConditions: paymentConditions.trim() || undefined,
+        paymentTerm: paymentTerm.trim() || undefined,
+        deliveryTerm: deliveryTerm.trim() || undefined,
         notes: notes || undefined,
       };
       const { data } = await api.post('/quotes', payload);
@@ -448,6 +456,31 @@ export function QuoteBuilder() {
             <p className="text-xs text-gray-400 mt-0.5 ml-5">
               Desmarcado, o cliente vê só o valor total (o custo adicional continua somado).
             </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Projeto e condições (opcional)</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-gray-400">Cada campo só aparece no PDF do orçamento se for preenchido.</p>
+          <div>
+            <Label>Nome do projeto</Label>
+            <Input value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="Ex: Cozinha apartamento 302" />
+          </div>
+          <div>
+            <Label>Formas de pagamento</Label>
+            <Textarea rows={2} value={paymentConditions} onChange={(e) => setPaymentConditions(e.target.value)} placeholder="Ex: Pix, dinheiro ou cartão em até 3x" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label>Prazo de pagamento</Label>
+              <Input value={paymentTerm} onChange={(e) => setPaymentTerm(e.target.value)} placeholder="Ex: 50% na aprovação, 50% na entrega" />
+            </div>
+            <div>
+              <Label>Prazo para ficar pronto</Label>
+              <Input value={deliveryTerm} onChange={(e) => setDeliveryTerm(e.target.value)} placeholder="Ex: 15 dias úteis após aprovação" />
+            </div>
           </div>
         </CardContent>
       </Card>
