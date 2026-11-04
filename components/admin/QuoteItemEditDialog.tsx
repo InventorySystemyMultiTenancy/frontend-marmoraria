@@ -10,12 +10,18 @@ import { Input, Label } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
 import { formatCurrency } from '@/lib/utils';
 
+interface PreviewResult {
+  materialValue: number;
+  acabamentoValue: number;
+  instalacaoValue: number;
+}
+
 interface ExtraInput {
   name: string;
   price: string;
 }
 
-// Edição manual de um item (material, acabamento/frontão, instalação e custo
+// Edição manual de um item (medidas, quantidade, material, acabamento/frontão, instalação e custo
 // adicional). Usado tanto na tela do orçamento quanto na do pedido — o pedido
 // é só um orçamento aprovado, então a rota é a mesma e o backend já atualiza o
 // lançamento de receita quando há pedido vinculado.
@@ -33,6 +39,11 @@ export function QuoteItemEditDialog({
   onSaved: () => void;
 }) {
   const [values, setValues] = useState({ materialValue: '', acabamentoValue: '', instalacaoValue: '' });
+  const [dims, setDims] = useState({ description: '', widthCm: '', heightCm: '', thicknessMm: '', quantity: '' });
+  // Só recalcula pela fórmula depois que o usuário mexe nas medidas — ao abrir,
+  // mantém os valores salvos (que podem ter sido ajustados manualmente).
+  const [dimsTouched, setDimsTouched] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
   const [extras, setExtras] = useState<ExtraInput[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,14 +54,72 @@ export function QuoteItemEditDialog({
       acabamentoValue: String(item.acabamentoValue ?? 0),
       instalacaoValue: String(item.instalacaoValue ?? 0),
     });
+    setDims({
+      description: item.description ?? '',
+      widthCm: String(item.widthCm),
+      heightCm: String(item.heightCm),
+      thicknessMm: String(item.thicknessMm),
+      quantity: String(item.quantity),
+    });
+    setDimsTouched(false);
     setExtras((item.extras ?? []).map((ex) => ({ name: ex.name, price: String(ex.price) })));
     setError(null);
   }, [item]);
+
+  // Medidas alteradas → recalcula material/acabamento/instalação pela fórmula
+  // ativa (mesma prévia do QuoteBuilder), com debounce pra não chamar a cada tecla.
+  useEffect(() => {
+    if (!item || !dimsTouched) return;
+    const width = Number(dims.widthCm);
+    const height = Number(dims.heightCm);
+    const thickness = Number(dims.thicknessMm) || 20;
+    if (!(width > 0) || !(height > 0)) return;
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setRecalculating(true);
+      try {
+        const { data } = await api.post<PreviewResult>('/formula/preview', {
+          width,
+          height,
+          thickness,
+          pricePerM2: item.marble?.pricePerM2 ?? 0,
+          quantity: 1,
+          includeAcabamento: item.includeAcabamento ?? false,
+          includeInstalacao: item.includeInstalacao ?? false,
+        });
+        if (cancelled) return;
+        setValues({
+          materialValue: String(Math.round(data.materialValue * 100) / 100),
+          acabamentoValue: String(Math.round(data.acabamentoValue * 100) / 100),
+          instalacaoValue: String(Math.round(data.instalacaoValue * 100) / 100),
+        });
+      } catch {
+        if (!cancelled) setError('Não foi possível recalcular os valores pela fórmula.');
+      } finally {
+        if (!cancelled) setRecalculating(false);
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [item, dimsTouched, dims.widthCm, dims.heightCm, dims.thicknessMm]);
+
+  function updateDim(field: 'widthCm' | 'heightCm' | 'thicknessMm', value: string) {
+    setDims((d) => ({ ...d, [field]: value }));
+    setDimsTouched(true);
+  }
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (!item) return;
       await api.patch(`/quotes/${quoteId}/items/${item.id}/values`, {
+        description: dims.description.trim(),
+        widthCm: Number(dims.widthCm),
+        heightCm: Number(dims.heightCm),
+        thicknessMm: Number(dims.thicknessMm),
+        quantity: Number(dims.quantity),
         materialValue: Number(values.materialValue || 0),
         acabamentoValue: Number(values.acabamentoValue || 0),
         instalacaoValue: Number(values.instalacaoValue || 0),
@@ -71,9 +140,19 @@ export function QuoteItemEditDialog({
   const unitPrice =
     Number(values.materialValue || 0) + Number(values.acabamentoValue || 0) + Number(values.instalacaoValue || 0);
   const extrasTotal = extras.reduce((sum, ex) => sum + (Number(ex.price) || 0), 0);
-  const previewTotal = unitPrice * item.quantity + extrasTotal;
+  const quantity = Number(dims.quantity) || 0;
+  const previewTotal = unitPrice * quantity + extrasTotal;
+  const areaM2 = ((Number(dims.widthCm) || 0) * (Number(dims.heightCm) || 0)) / 10000;
 
   function save() {
+    if (!(Number(dims.widthCm) > 0) || !(Number(dims.heightCm) > 0) || !(Number(dims.thicknessMm) > 0)) {
+      setError('Informe comprimento, profundidade e espessura maiores que zero.');
+      return;
+    }
+    if (!Number.isInteger(Number(dims.quantity)) || Number(dims.quantity) < 1) {
+      setError('A quantidade deve ser um número inteiro maior que zero.');
+      return;
+    }
     const numbers = [values.materialValue, values.acabamentoValue, values.instalacaoValue, ...extras.map((e) => e.price)];
     if (numbers.some((n) => n !== '' && (isNaN(Number(n)) || Number(n) < 0))) {
       setError('Os valores não podem ser negativos.');
@@ -84,11 +163,52 @@ export function QuoteItemEditDialog({
 
   return (
     <Dialog open onClose={onClose}>
-      <h2 className="text-lg font-semibold text-marble-dark mb-1">Editar item</h2>
+      <h2 className="text-lg font-semibold text-marble-dark mb-1">Editar item{item.marble?.name ? ` — ${item.marble.name}` : ''}</h2>
       <p className="text-sm text-gray-500 mb-4">
         Valores por peça (antes de multiplicar pela quantidade). O custo adicional é somado uma vez ao total do item.
       </p>
       <div className="space-y-3">
+        <div>
+          <Label>Descrição</Label>
+          <Input value={dims.description} onChange={(e) => setDims((d) => ({ ...d, description: e.target.value }))} />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div>
+            <Label>Comprimento (cm)</Label>
+            <Input type="number" min={0} value={dims.widthCm} onChange={(e) => updateDim('widthCm', e.target.value)} />
+          </div>
+          <div>
+            <Label>Profundidade (cm)</Label>
+            <Input type="number" min={0} value={dims.heightCm} onChange={(e) => updateDim('heightCm', e.target.value)} />
+          </div>
+          <div>
+            <Label>Espessura (mm)</Label>
+            <Input
+              type="number"
+              min={0}
+              value={dims.thicknessMm}
+              onChange={(e) => updateDim('thicknessMm', e.target.value)}
+            />
+          </div>
+          <div>
+            <Label>Qtd.</Label>
+            <Input
+              type="number"
+              min={1}
+              step={1}
+              value={dims.quantity}
+              onChange={(e) => setDims((d) => ({ ...d, quantity: e.target.value }))}
+            />
+          </div>
+        </div>
+        <p className="text-xs text-gray-500">
+          Área: {areaM2.toFixed(2)} m²
+          {recalculating
+            ? ' · recalculando valores...'
+            : dimsTouched
+              ? ' · valores recalculados pela fórmula (ajuste abaixo se precisar)'
+              : ''}
+        </p>
         <div>
           <Label>Material (R$)</Label>
           <Input
@@ -171,7 +291,7 @@ export function QuoteItemEditDialog({
       {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
       <div className="flex justify-end gap-2 pt-4">
         <Button variant="outline" onClick={onClose}>Cancelar</Button>
-        <Button variant="gold" onClick={save} disabled={mutation.isPending}>
+        <Button variant="gold" onClick={save} disabled={mutation.isPending || recalculating}>
           {mutation.isPending ? 'Salvando...' : 'Salvar'}
         </Button>
       </div>
