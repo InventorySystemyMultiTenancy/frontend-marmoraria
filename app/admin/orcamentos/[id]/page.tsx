@@ -13,6 +13,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission } from '@/lib/permissions';
+import { QuoteItemEditDialog } from '@/components/admin/QuoteItemEditDialog';
+import { ShowExtrasToggle } from '@/components/admin/ShowExtrasToggle';
 
 export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -24,8 +26,6 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
   const [cpfDialogError, setCpfDialogError] = useState<string | null>(null);
 
   const [editingItem, setEditingItem] = useState<QuoteItem | null>(null);
-  const [editValues, setEditValues] = useState({ materialValue: '', acabamentoValue: '', instalacaoValue: '' });
-  const [editError, setEditError] = useState<string | null>(null);
 
   const [showDiscountDialog, setShowDiscountDialog] = useState(false);
   const [discountInput, setDiscountInput] = useState({ discount: '', discountPct: '' });
@@ -51,25 +51,6 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
         'Não foi possível concluir a ação.';
       if (showCpfDialog) setCpfDialogError(message);
     },
-  });
-
-  // Só o MASTER pode sobrescrever o valor calculado de material/acabamento/
-  // instalação de um item — inclusive em orçamentos já aprovados.
-  const editItemValuesMutation = useMutation({
-    mutationFn: async () => {
-      if (!editingItem) return;
-      await api.patch(`/quotes/${id}/items/${editingItem.id}/values`, {
-        materialValue: Number(editValues.materialValue),
-        acabamentoValue: Number(editValues.acabamentoValue),
-        instalacaoValue: Number(editValues.instalacaoValue),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['quote', id] });
-      setEditingItem(null);
-      setEditError(null);
-    },
-    onError: () => setEditError('Não foi possível salvar os valores.'),
   });
 
   const discountMutation = useMutation({
@@ -126,12 +107,6 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
 
   function openEditItem(item: QuoteItem) {
     setEditingItem(item);
-    setEditValues({
-      materialValue: String(item.materialValue ?? 0),
-      acabamentoValue: String(item.acabamentoValue ?? 0),
-      instalacaoValue: String(item.instalacaoValue ?? 0),
-    });
-    setEditError(null);
   }
 
   function handleApproveClick() {
@@ -280,6 +255,14 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
             </div>
           )}
           <div className="flex justify-between text-lg font-bold text-marble-dark pt-2 border-t border-gray-100"><span>Total</span><span>{formatCurrency(data.total)}</span></div>
+          <div className="pt-3 mt-2 border-t border-gray-100">
+            <ShowExtrasToggle
+              quoteId={id}
+              checked={Boolean(data.showExtras)}
+              disabled={!canEditDiscount}
+              onSaved={() => queryClient.invalidateQueries({ queryKey: ['quote', id] })}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -354,46 +337,14 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
         </div>
       </Dialog>
 
-      <Dialog open={editingItem != null} onClose={() => setEditingItem(null)}>
-        <h2 className="text-lg font-semibold text-marble-dark mb-1">Editar valores do item</h2>
-        <p className="text-sm text-gray-500 mb-4">
-          Sobrescreve o valor calculado pela fórmula (por peça, antes de multiplicar pela quantidade). Deixe como
-          está para manter o valor base.
-        </p>
-        <div className="space-y-3">
-          <div>
-            <Label>Material (R$)</Label>
-            <Input
-              type="number"
-              value={editValues.materialValue}
-              onChange={(e) => setEditValues((v) => ({ ...v, materialValue: e.target.value }))}
-            />
-          </div>
-          <div>
-            <Label>Acabamento/frontão (R$)</Label>
-            <Input
-              type="number"
-              value={editValues.acabamentoValue}
-              onChange={(e) => setEditValues((v) => ({ ...v, acabamentoValue: e.target.value }))}
-            />
-          </div>
-          <div>
-            <Label>Instalação (R$)</Label>
-            <Input
-              type="number"
-              value={editValues.instalacaoValue}
-              onChange={(e) => setEditValues((v) => ({ ...v, instalacaoValue: e.target.value }))}
-            />
-          </div>
-        </div>
-        {editError && <p className="text-xs text-red-600 mt-2">{editError}</p>}
-        <div className="flex justify-end gap-2 pt-4">
-          <Button variant="outline" onClick={() => setEditingItem(null)}>Cancelar</Button>
-          <Button variant="gold" onClick={() => editItemValuesMutation.mutate()} disabled={editItemValuesMutation.isPending}>
-            {editItemValuesMutation.isPending ? 'Salvando...' : 'Salvar'}
-          </Button>
-        </div>
-      </Dialog>
+      {/* Só o MASTER pode sobrescrever valores do item (inclusive custo adicional). */}
+      <QuoteItemEditDialog
+        quoteId={id}
+        item={editingItem}
+        isApproved={data.status === 'APPROVED'}
+        onClose={() => setEditingItem(null)}
+        onSaved={() => queryClient.invalidateQueries({ queryKey: ['quote', id] })}
+      />
     </div>
   );
 }

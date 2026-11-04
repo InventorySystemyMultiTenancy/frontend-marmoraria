@@ -212,6 +212,7 @@ export interface Quote {
   freight: number;
   freightDistanceKm?: number | null;
   total: number;
+  showExtras?: boolean;
   notes?: string | null;
   validUntil?: string | null;
   pdfUrl?: string | null;

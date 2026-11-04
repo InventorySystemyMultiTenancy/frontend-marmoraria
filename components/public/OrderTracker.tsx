@@ -19,6 +19,8 @@ interface TrackedOrderItem {
   quantity: number;
   areaM2: number;
   totalPrice: number;
+  // Só vem preenchido se o admin marcou "mostrar custo adicional".
+  extras?: { name: string; price: number }[];
 }
 
 interface TrackedOrder {
@@ -249,6 +251,11 @@ function OrderCard({ order }: { order: TrackedOrder }) {
                 <p className="text-xs text-white/50">
                   {item.widthCm}x{item.heightCm}cm ({item.thicknessMm}mm) — {item.areaM2.toFixed(2)} m² — Qtd. {item.quantity}
                 </p>
+                {item.extras && item.extras.length > 0 && (
+                  <p className="text-xs text-white/50">
+                    + {item.extras.map((ex) => `${ex.name} (${formatCurrency(ex.price)})`).join(', ')}
+                  </p>
+                )}
               </div>
               <p className="text-sm font-semibold text-marble-gold">{formatCurrency(item.totalPrice)}</p>
             </div>

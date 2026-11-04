@@ -64,6 +64,7 @@ export function QuoteBuilder() {
   const [freightRatePerKm, setFreightRatePerKm] = useState('');
   const [freightManual, setFreightManual] = useState('');
   const [notes, setNotes] = useState('');
+  const [showExtras, setShowExtras] = useState(false);
   const [items, setItems] = useState<BuilderItem[]>([{ ...emptyItem }]);
   const [error, setError] = useState<string | null>(null);
 
@@ -211,6 +212,7 @@ export function QuoteBuilder() {
         discountPct: Number(discountPct || 0),
         freight: computedFreight,
         freightDistanceKm: freightDistanceKm ? Number(freightDistanceKm) : undefined,
+        showExtras,
         notes: notes || undefined,
       };
       const { data } = await api.post('/quotes', payload);
@@ -438,6 +440,15 @@ export function QuoteBuilder() {
             </div>
           </div>
           <div><Label>Observações</Label><Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+          <div className="text-sm">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={showExtras} onChange={(e) => setShowExtras(e.target.checked)} />
+              Mostrar custo adicional no PDF e no acompanhamento do cliente
+            </label>
+            <p className="text-xs text-gray-400 mt-0.5 ml-5">
+              Desmarcado, o cliente vê só o valor total (o custo adicional continua somado).
+            </p>
+          </div>
         </CardContent>
       </Card>
 

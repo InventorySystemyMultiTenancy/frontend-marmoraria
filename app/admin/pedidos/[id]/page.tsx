@@ -3,10 +3,14 @@
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Pencil } from 'lucide-react';
 import { api } from '@/lib/api';
-import { Order, OrderStatus, ORDER_STATUS_LABELS } from '@/types';
+import { Order, OrderStatus, ORDER_STATUS_LABELS, QuoteItem, User } from '@/types';
 import { Badge } from '@/components/ui/badge';
-import { Input, Label, Select } from '@/components/ui/input';
+import { Input, Label, Select, Textarea } from '@/components/ui/input';
+import { Dialog } from '@/components/ui/dialog';
+import { QuoteItemEditDialog } from '@/components/admin/QuoteItemEditDialog';
+import { ShowExtrasToggle } from '@/components/admin/ShowExtrasToggle';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -31,6 +35,48 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
   const { data, isLoading } = useQuery({
     queryKey: ['order', id],
     queryFn: async () => (await api.get(`/orders/${id}`)).data.order as Order,
+  });
+
+  const canViewCosts = hasPermission(user, 'orders_view_costs');
+  const canListUsers = hasPermission(user, 'users_view');
+
+  const [editingItem, setEditingItem] = useState<QuoteItem | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editForm, setEditForm] = useState({
+    assignedToId: '',
+    startDate: '',
+    estimatedDate: '',
+    completedDate: '',
+    productionNotes: '',
+    materialCost: '',
+    laborCost: '',
+  });
+
+  const { data: usersData } = useQuery({
+    queryKey: ['users-options'],
+    queryFn: async () => (await api.get('/users', { params: { limit: 100 } })).data as { users: User[] },
+    enabled: canListUsers,
+  });
+
+  const refreshOrder = () => queryClient.invalidateQueries({ queryKey: ['order', id] });
+
+  // Edição dos dados de produção do pedido (responsável, datas, observações e
+  // custos) — o backend já aceitava, só faltava a tela.
+  const editOrderMutation = useMutation({
+    mutationFn: async () =>
+      api.put(`/orders/${id}`, {
+        ...(canListUsers ? { assignedToId: editForm.assignedToId || null } : {}),
+        startDate: editForm.startDate || undefined,
+        estimatedDate: editForm.estimatedDate || undefined,
+        completedDate: editForm.completedDate || undefined,
+        productionNotes: editForm.productionNotes,
+        ...(canViewCosts && editForm.materialCost !== '' ? { materialCost: Number(editForm.materialCost) } : {}),
+        ...(canViewCosts && editForm.laborCost !== '' ? { laborCost: Number(editForm.laborCost) } : {}),
+      }),
+    onSuccess: () => {
+      refreshOrder();
+      setShowEditDialog(false);
+    },
   });
 
   const updateMutation = useMutation({
@@ -62,9 +108,27 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
   }
 
   const canUpdateStatus = hasPermission(user, 'orders_update_status');
-  const canViewCosts = hasPermission(user, 'orders_view_costs');
   const canApplyDiscount = hasPermission(user, 'orders_apply_discount');
+  const canEditQuote = hasPermission(user, 'quotes_edit');
+  const isMaster = user?.role === 'MASTER';
   const quote = data.quote;
+
+  const toDateInput = (d?: string | null) => (d ? d.slice(0, 10) : '');
+
+  function openEditDialog() {
+    if (!data) return;
+    setEditForm({
+      assignedToId: data.assignedToId ?? data.assignedTo?.id ?? '',
+      startDate: toDateInput(data.startDate),
+      estimatedDate: toDateInput(data.estimatedDate),
+      completedDate: toDateInput(data.completedDate),
+      productionNotes: data.productionNotes ?? '',
+      materialCost: data.materialCost != null ? String(data.materialCost) : '',
+      laborCost: data.laborCost != null ? String(data.laborCost) : '',
+    });
+    editOrderMutation.reset();
+    setShowEditDialog(true);
+  }
 
   return (
     <div className="space-y-4 max-w-4xl">
@@ -100,7 +164,14 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Produção</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
+          <CardTitle>Produção</CardTitle>
+          {canUpdateStatus && (
+            <Button size="sm" variant="outline" onClick={openEditDialog}>
+              <Pencil size={14} /> Editar pedido
+            </Button>
+          )}
+        </CardHeader>
         <CardContent className="text-sm space-y-1">
           <p><strong>Responsável:</strong> {data.assignedTo?.name ?? 'Não atribuído'}</p>
           <p><strong>Início:</strong> {data.startDate ? formatDate(data.startDate) : '-'}</p>
@@ -147,6 +218,7 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
                     <th className="px-5 py-3 text-left font-medium text-gray-600">Área</th>
                     <th className="px-5 py-3 text-left font-medium text-gray-600">Qtd.</th>
                     <th className="px-5 py-3 text-left font-medium text-gray-600">Total</th>
+                    {isMaster && <th className="px-5 py-3"></th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -154,6 +226,13 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
                     <tr key={item.id} className="border-b border-gray-50 last:border-0">
                       <td className="px-5 py-3">
                         {item.marble?.name}
+                        {(item.includeAcabamento || item.includeInstalacao) && (
+                          <div className="text-xs text-gray-400 mt-0.5">
+                            Material: {formatCurrency((item.materialValue ?? 0) * item.quantity)}
+                            {item.includeAcabamento && ` · Acabamento/frontão: ${formatCurrency((item.acabamentoValue ?? 0) * item.quantity)}`}
+                            {item.includeInstalacao && ` · Instalação: ${formatCurrency((item.instalacaoValue ?? 0) * item.quantity)}`}
+                          </div>
+                        )}
                         {item.extras && item.extras.length > 0 && (
                           <div className="text-xs text-gray-400 mt-0.5">
                             + {item.extras.map((ex) => `${ex.name} (${formatCurrency(ex.price)})`).join(', ')}
@@ -164,6 +243,17 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
                       <td className="px-5 py-3">{item.areaM2.toFixed(2)} m²</td>
                       <td className="px-5 py-3">{item.quantity}</td>
                       <td className="px-5 py-3">{formatCurrency(item.totalPrice)}</td>
+                      {isMaster && (
+                        <td className="px-5 py-3">
+                          <button
+                            onClick={() => setEditingItem(item)}
+                            className="text-gray-400 hover:text-marble-gold cursor-pointer"
+                            aria-label="Editar item"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -184,6 +274,15 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
               <div className="flex justify-between text-lg font-bold text-marble-dark pt-2 border-t border-gray-100">
                 <span>Total</span>
                 <span>{formatCurrency(quote.total)}</span>
+              </div>
+
+              <div className="pt-3 mt-2 border-t border-gray-100">
+                <ShowExtrasToggle
+                  quoteId={quote.id}
+                  checked={Boolean(quote.showExtras)}
+                  disabled={!canEditQuote}
+                  onSaved={refreshOrder}
+                />
               </div>
 
               {canApplyDiscount && (
@@ -234,8 +333,108 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
           <Link href={`/admin/orcamentos/${quote.id}`} className="inline-block text-sm text-marble-gold hover:underline">
             Ver orçamento original ({quote.quoteNumber})
           </Link>
+
+          <QuoteItemEditDialog
+            quoteId={quote.id}
+            item={editingItem}
+            isApproved
+            onClose={() => setEditingItem(null)}
+            onSaved={refreshOrder}
+          />
         </>
       )}
+
+      <Dialog open={showEditDialog} onClose={() => setShowEditDialog(false)}>
+        <h2 className="text-lg font-semibold text-marble-dark mb-4">Editar pedido</h2>
+        <div className="space-y-3">
+          {canListUsers && (
+            <div>
+              <Label>Responsável</Label>
+              <Select
+                value={editForm.assignedToId}
+                onChange={(e) => setEditForm((f) => ({ ...f, assignedToId: e.target.value }))}
+              >
+                <option value="">Não atribuído</option>
+                {usersData?.users
+                  .filter((u) => u.isActive !== false)
+                  .map((u) => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))}
+              </Select>
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <Label>Início</Label>
+              <Input
+                type="date"
+                value={editForm.startDate}
+                onChange={(e) => setEditForm((f) => ({ ...f, startDate: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label>Previsão</Label>
+              <Input
+                type="date"
+                value={editForm.estimatedDate}
+                onChange={(e) => setEditForm((f) => ({ ...f, estimatedDate: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label>Conclusão</Label>
+              <Input
+                type="date"
+                value={editForm.completedDate}
+                onChange={(e) => setEditForm((f) => ({ ...f, completedDate: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div>
+            <Label>Observações de produção</Label>
+            <Textarea
+              rows={3}
+              value={editForm.productionNotes}
+              onChange={(e) => setEditForm((f) => ({ ...f, productionNotes: e.target.value }))}
+            />
+          </div>
+          {canViewCosts && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label>Custo de material (R$)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={editForm.materialCost}
+                  onChange={(e) => setEditForm((f) => ({ ...f, materialCost: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Custo de mão de obra (R$)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={editForm.laborCost}
+                  onChange={(e) => setEditForm((f) => ({ ...f, laborCost: e.target.value }))}
+                />
+              </div>
+            </div>
+          )}
+          {isMaster && (
+            <p className="text-xs text-gray-400">
+              Para alterar os valores dos produtos (material, acabamento, instalação e custo adicional), use o lápis em cada item.
+            </p>
+          )}
+        </div>
+        {editOrderMutation.isError && <p className="text-xs text-red-600 mt-2">Não foi possível salvar o pedido.</p>}
+        <div className="flex justify-end gap-2 pt-4">
+          <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancelar</Button>
+          <Button variant="gold" onClick={() => editOrderMutation.mutate()} disabled={editOrderMutation.isPending}>
+            {editOrderMutation.isPending ? 'Salvando...' : 'Salvar'}
+          </Button>
+        </div>
+      </Dialog>
     </div>
   );
 }
