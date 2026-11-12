@@ -211,6 +211,8 @@ export interface Quote {
   discountPct: number;
   freight: number;
   freightDistanceKm?: number | null;
+  freightRatePerKm?: number | null;
+  deliveryAddress?: string | null;
   total: number;
   showExtras?: boolean;
   projectName?: string | null;
@@ -220,6 +222,8 @@ export interface Quote {
   notes?: string | null;
   validUntil?: string | null;
   pdfUrl?: string | null;
+  // Pedido gerado na aprovação (só vem no detalhe do orçamento).
+  order?: { id: string; orderNumber: string; name?: string | null } | null;
   source: QuoteSource;
   createdAt: string;
 }
@@ -255,6 +259,7 @@ export interface OrderStage {
 export interface Order {
   id: string;
   orderNumber: string;
+  name?: string | null;
   quoteId: string;
   quote?: Quote;
   assignedToId?: string | null;

@@ -60,6 +60,7 @@ export function QuoteBuilder() {
   const [clientCpfCnpj, setClientCpfCnpj] = useState('');
   const [discount, setDiscount] = useState('0');
   const [discountPct, setDiscountPct] = useState('0');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
   const [freightDistanceKm, setFreightDistanceKm] = useState('');
   const [freightRatePerKm, setFreightRatePerKm] = useState('');
   const [freightManual, setFreightManual] = useState('');
@@ -216,6 +217,8 @@ export function QuoteBuilder() {
         discountPct: Number(discountPct || 0),
         freight: computedFreight,
         freightDistanceKm: freightDistanceKm ? Number(freightDistanceKm) : undefined,
+        freightRatePerKm: freightDistanceKm && freightRatePerKm ? Number(freightRatePerKm) : undefined,
+        deliveryAddress: deliveryAddress.trim() || undefined,
         showExtras,
         projectName: projectName.trim() || undefined,
         paymentConditions: paymentConditions.trim() || undefined,
@@ -324,7 +327,7 @@ export function QuoteBuilder() {
               <div className="flex justify-between items-start gap-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1">
                   <div className="sm:col-span-2">
-                    <Label>Mármore</Label>
+                    <Label>Material</Label>
                     <Select value={item.marbleId} onChange={(e) => updateItem(idx, { marbleId: e.target.value })}>
                       <option value="">Selecione...</option>
                       {marbles.map((m) => (
@@ -427,6 +430,14 @@ export function QuoteBuilder() {
             <div><Label>Desconto (R$)</Label><Input type="number" value={discount} onChange={(e) => setDiscount(e.target.value)} /></div>
             <div><Label>Desconto (%)</Label><Input type="number" value={discountPct} onChange={(e) => setDiscountPct(e.target.value)} /></div>
           </div>
+          <div>
+            <Label>Endereço de entrega</Label>
+            <Input
+              value={deliveryAddress}
+              onChange={(e) => setDeliveryAddress(e.target.value)}
+              placeholder="Rua, número, bairro, cidade"
+            />
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <Label>Distância (km)</Label>
@@ -474,7 +485,7 @@ export function QuoteBuilder() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label>Prazo de pagamento</Label>
+              <Label>Condições de pagamento</Label>
               <Input value={paymentTerm} onChange={(e) => setPaymentTerm(e.target.value)} placeholder="Ex: 50% na aprovação, 50% na entrega" />
             </div>
             <div>

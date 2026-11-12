@@ -49,6 +49,7 @@ export default function PedidosPage() {
                       >
                         {order.orderNumber}
                       </Link>
+                      {order.name && <p className="text-xs font-medium text-marble-dark -mt-1">{order.name}</p>}
                       <p className="text-xs text-gray-500">{order.quote?.client?.name ?? '-'}</p>
                       <p className="text-xs text-gray-500">{formatCurrency(order.quote?.total ?? 0)}</p>
                       {order.estimatedDate && (

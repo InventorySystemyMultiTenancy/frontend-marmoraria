@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { QuoteItem } from '@/types';
+import { Marble, QuoteItem } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Input, Label } from '@/components/ui/input';
+import { Input, Label, Select } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
 import { formatCurrency } from '@/lib/utils';
 
@@ -21,7 +21,7 @@ interface ExtraInput {
   price: string;
 }
 
-// Edição manual de um item (medidas, quantidade, material, acabamento/frontão, instalação e custo
+// Edição manual de um item (mármore, medidas, quantidade, material, acabamento/frontão, instalação e custo
 // adicional). Usado tanto na tela do orçamento quanto na do pedido — o pedido
 // é só um orçamento aprovado, então a rota é a mesma e o backend já atualiza o
 // lançamento de receita quando há pedido vinculado.
@@ -39,11 +39,24 @@ export function QuoteItemEditDialog({
   onSaved: () => void;
 }) {
   const [values, setValues] = useState({ materialValue: '', acabamentoValue: '', instalacaoValue: '' });
+  const [marbleId, setMarbleId] = useState('');
   const [dims, setDims] = useState({ description: '', widthCm: '', heightCm: '', thicknessMm: '', quantity: '' });
   // Só recalcula pela fórmula depois que o usuário mexe nas medidas — ao abrir,
   // mantém os valores salvos (que podem ter sido ajustados manualmente).
   const [dimsTouched, setDimsTouched] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
+
+  const { data: marblesData } = useQuery({
+    queryKey: ['marbles-options'],
+    queryFn: async () => (await api.get('/marbles', { params: { limit: 200 } })).data as { marbles: Marble[] },
+    enabled: Boolean(item),
+  });
+  const marbles = marblesData?.marbles ?? [];
+  const selectedMarble = marbles.find((m) => m.id === marbleId);
+  // Preço/m² usado no recálculo: o do mármore escolhido; enquanto a lista não
+  // carrega (ou se o mármore não estiver nela), o que veio junto do item.
+  const pricePerM2 =
+    selectedMarble?.pricePerM2 ?? (marbleId === item?.marbleId ? item?.marble?.pricePerM2 : undefined) ?? 0;
   const [extras, setExtras] = useState<ExtraInput[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,6 +67,7 @@ export function QuoteItemEditDialog({
       acabamentoValue: String(item.acabamentoValue ?? 0),
       instalacaoValue: String(item.instalacaoValue ?? 0),
     });
+    setMarbleId(item.marbleId);
     setDims({
       description: item.description ?? '',
       widthCm: String(item.widthCm),
@@ -83,7 +97,7 @@ export function QuoteItemEditDialog({
           width,
           height,
           thickness,
-          pricePerM2: item.marble?.pricePerM2 ?? 0,
+          pricePerM2,
           quantity: 1,
           includeAcabamento: item.includeAcabamento ?? false,
           includeInstalacao: item.includeInstalacao ?? false,
@@ -104,7 +118,7 @@ export function QuoteItemEditDialog({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [item, dimsTouched, dims.widthCm, dims.heightCm, dims.thicknessMm]);
+  }, [item, dimsTouched, dims.widthCm, dims.heightCm, dims.thicknessMm, pricePerM2]);
 
   function updateDim(field: 'widthCm' | 'heightCm' | 'thicknessMm', value: string) {
     setDims((d) => ({ ...d, [field]: value }));
@@ -115,6 +129,7 @@ export function QuoteItemEditDialog({
     mutationFn: async () => {
       if (!item) return;
       await api.patch(`/quotes/${quoteId}/items/${item.id}/values`, {
+        marbleId,
         description: dims.description.trim(),
         widthCm: Number(dims.widthCm),
         heightCm: Number(dims.heightCm),
@@ -145,6 +160,10 @@ export function QuoteItemEditDialog({
   const areaM2 = ((Number(dims.widthCm) || 0) * (Number(dims.heightCm) || 0)) / 10000;
 
   function save() {
+    if (!marbleId) {
+      setError('Selecione o mármore.');
+      return;
+    }
     if (!(Number(dims.widthCm) > 0) || !(Number(dims.heightCm) > 0) || !(Number(dims.thicknessMm) > 0)) {
       setError('Informe comprimento, profundidade e espessura maiores que zero.');
       return;
@@ -163,11 +182,28 @@ export function QuoteItemEditDialog({
 
   return (
     <Dialog open onClose={onClose}>
-      <h2 className="text-lg font-semibold text-marble-dark mb-1">Editar item{item.marble?.name ? ` — ${item.marble.name}` : ''}</h2>
+      <h2 className="text-lg font-semibold text-marble-dark mb-1">Editar item</h2>
       <p className="text-sm text-gray-500 mb-4">
         Valores por peça (antes de multiplicar pela quantidade). O custo adicional é somado uma vez ao total do item.
       </p>
       <div className="space-y-3">
+        <div>
+          <Label>Material</Label>
+          <Select
+            value={marbleId}
+            onChange={(e) => {
+              setMarbleId(e.target.value);
+              setDimsTouched(true);
+            }}
+          >
+            {!selectedMarble && item.marble && <option value={item.marbleId}>{item.marble.name}</option>}
+            {marbles.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name} {m.pricePerM2 ? `— ${formatCurrency(m.pricePerM2)}/m²` : '(sob consulta)'}
+              </option>
+            ))}
+          </Select>
+        </div>
         <div>
           <Label>Descrição</Label>
           <Input value={dims.description} onChange={(e) => setDims((d) => ({ ...d, description: e.target.value }))} />

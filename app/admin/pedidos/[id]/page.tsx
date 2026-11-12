@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Pencil } from 'lucide-react';
+import { Pencil, Download, Check, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Order, OrderStatus, ORDER_STATUS_LABELS, QuoteItem, User } from '@/types';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,8 @@ import { Input, Label, Select, Textarea } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
 import { QuoteItemEditDialog } from '@/components/admin/QuoteItemEditDialog';
 import { ShowExtrasToggle } from '@/components/admin/ShowExtrasToggle';
+import { QuoteFreightDialog } from '@/components/admin/QuoteFreightDialog';
+import { QuoteConditionsDialog } from '@/components/admin/QuoteConditionsDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -41,6 +43,10 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
   const canListUsers = hasPermission(user, 'users_view');
 
   const [editingItem, setEditingItem] = useState<QuoteItem | null>(null);
+  const [showFreightDialog, setShowFreightDialog] = useState(false);
+  const [showConditionsDialog, setShowConditionsDialog] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editForm, setEditForm] = useState({
     assignedToId: '',
@@ -76,6 +82,15 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
     onSuccess: () => {
       refreshOrder();
       setShowEditDialog(false);
+    },
+  });
+
+  // Nome opcional do pedido (aparece na lista, no detalhe e no PDF).
+  const nameMutation = useMutation({
+    mutationFn: async () => api.put(`/orders/${id}`, { name: nameInput.trim() || null }),
+    onSuccess: () => {
+      refreshOrder();
+      setEditingName(false);
     },
   });
 
@@ -133,12 +148,65 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
   return (
     <div className="space-y-4 max-w-4xl">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-marble-dark">{data.orderNumber}</h1>
-          <p className="text-sm text-gray-500">Criado em {formatDate(data.createdAt)}</p>
+        <div className="min-w-0">
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <Input
+                autoFocus
+                className="h-9 w-64 max-w-full"
+                value={nameInput}
+                placeholder="Nome do pedido (ex: Cozinha apto 302)"
+                onChange={(e) => setNameInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') nameMutation.mutate();
+                  if (e.key === 'Escape') setEditingName(false);
+                }}
+              />
+              <button
+                onClick={() => nameMutation.mutate()}
+                disabled={nameMutation.isPending}
+                className="text-green-600 hover:text-green-700 cursor-pointer"
+                aria-label="Salvar nome do pedido"
+              >
+                <Check size={18} />
+              </button>
+              <button
+                onClick={() => setEditingName(false)}
+                className="text-gray-400 hover:text-red-600 cursor-pointer"
+                aria-label="Cancelar"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          ) : (
+            <h1 className="text-2xl font-bold text-marble-dark flex items-center gap-2 flex-wrap">
+              {data.name || data.orderNumber}
+              {canUpdateStatus && (
+                <button
+                  onClick={() => {
+                    setNameInput(data.name ?? '');
+                    setEditingName(true);
+                  }}
+                  className="text-gray-400 hover:text-marble-gold cursor-pointer"
+                  aria-label="Editar nome do pedido"
+                >
+                  <Pencil size={15} />
+                </button>
+              )}
+            </h1>
+          )}
+          {nameMutation.isError && <p className="text-xs text-red-600">Não foi possível salvar o nome.</p>}
+          <p className="text-sm text-gray-500">
+            {data.name ? `${data.orderNumber} · ` : ''}Criado em {formatDate(data.createdAt)}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="gold">{ORDER_STATUS_LABELS[data.status]}</Badge>
+          {quote && (
+            <a href={`/api/pdf/quote/${quote.id}`} target="_blank" rel="noreferrer">
+              <Button variant="outline" size="sm"><Download size={14} /> PDF</Button>
+            </a>
+          )}
           {canUpdateStatus && (
             <Select
               className="h-9 text-xs w-44"
@@ -213,7 +281,7 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
               <table className="w-full text-sm min-w-[560px]">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100">
-                    <th className="px-5 py-3 text-left font-medium text-gray-600">Mármore</th>
+                    <th className="px-5 py-3 text-left font-medium text-gray-600">Material</th>
                     <th className="px-5 py-3 text-left font-medium text-gray-600">Dimensões</th>
                     <th className="px-5 py-3 text-left font-medium text-gray-600">Área</th>
                     <th className="px-5 py-3 text-left font-medium text-gray-600">Qtd.</th>
@@ -330,9 +398,61 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <CardTitle>Pagamento e detalhes</CardTitle>
+              {canEditQuote && (
+                <Button size="sm" variant="outline" onClick={() => setShowConditionsDialog(true)}>
+                  <Pencil size={14} /> Editar
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent className="text-sm space-y-1 whitespace-pre-line">
+              {quote.projectName && <p><strong>Projeto:</strong> {quote.projectName}</p>}
+              <p><strong>Forma de pagamento:</strong> {quote.paymentConditions || '-'}</p>
+              <p><strong>Condições de pagamento:</strong> {quote.paymentTerm || '-'}</p>
+              {quote.deliveryTerm && <p><strong>Prazo para ficar pronto:</strong> {quote.deliveryTerm}</p>}
+              {quote.notes && <p><strong>Observações:</strong> {quote.notes}</p>}
+              <p className="text-xs text-gray-400 pt-1">Essas informações aparecem no PDF do pedido.</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <CardTitle>Entrega e frete</CardTitle>
+              {canEditQuote && (
+                <Button size="sm" variant="outline" onClick={() => setShowFreightDialog(true)}>
+                  <Pencil size={14} /> Editar
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent className="text-sm space-y-1">
+              <p><strong>Endereço de entrega:</strong> {quote.deliveryAddress || '-'}</p>
+              <p>
+                <strong>Frete:</strong> {formatCurrency(quote.freight)}
+                {quote.freightDistanceKm ? ` (${quote.freightDistanceKm}km)` : ''}
+              </p>
+              <p className="text-xs text-gray-400 pt-1">O frete é somado ao total do pedido e aparece no PDF.</p>
+            </CardContent>
+          </Card>
+
           <Link href={`/admin/orcamentos/${quote.id}`} className="inline-block text-sm text-marble-gold hover:underline">
             Ver orçamento original ({quote.quoteNumber})
           </Link>
+
+          <QuoteConditionsDialog
+            quote={quote}
+            open={showConditionsDialog}
+            onClose={() => setShowConditionsDialog(false)}
+            onSaved={refreshOrder}
+          />
+
+          <QuoteFreightDialog
+            quote={quote}
+            open={showFreightDialog}
+            onClose={() => setShowFreightDialog(false)}
+            onSaved={refreshOrder}
+          />
 
           <QuoteItemEditDialog
             quoteId={quote.id}
