@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import Image from 'next/image';
 import { useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Check, X } from 'lucide-react';
 import { publicApi } from '@/lib/api';
+import { Slab3D } from '@/components/ui/Slab3D';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { OrderStatus } from '@/types';
 
@@ -234,17 +234,14 @@ function OrderCard({ order }: { order: TrackedOrder }) {
         <div className="space-y-4">
           {order.quote.items.map((item, idx) => (
             <div key={idx} className="flex items-center gap-4 border-b border-white/10 pb-4 last:border-0 last:pb-0">
-              {item.marbleImage ? (
-                <Image
-                  src={item.marbleImage}
-                  alt={item.marbleName}
-                  width={56}
-                  height={56}
-                  className="rounded object-cover h-14 w-14 shrink-0"
-                />
-              ) : (
-                <div className="h-14 w-14 rounded bg-white/5 shrink-0" />
-              )}
+              <Slab3D
+                imageUrl={item.marbleImage}
+                widthCm={item.widthCm}
+                heightCm={item.heightCm}
+                thicknessMm={item.thicknessMm}
+                size={72}
+                label={item.marbleName}
+              />
               <div className="flex-1">
                 <p className="text-sm font-medium">{item.marbleName}</p>
                 {item.description && <p className="text-xs text-white/50">{item.description}</p>}

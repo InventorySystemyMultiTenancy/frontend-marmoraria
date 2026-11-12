@@ -15,9 +15,11 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission } from '@/lib/permissions';
 import { QuoteItemEditDialog } from '@/components/admin/QuoteItemEditDialog';
+import { Slab3D } from '@/components/ui/Slab3D';
 import { ShowExtrasToggle } from '@/components/admin/ShowExtrasToggle';
 import { QuoteFreightDialog } from '@/components/admin/QuoteFreightDialog';
 import { QuoteConditionsDialog } from '@/components/admin/QuoteConditionsDialog';
+import { QuoteClientDialog } from '@/components/admin/QuoteClientDialog';
 
 export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -31,6 +33,7 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
   const [editingItem, setEditingItem] = useState<QuoteItem | null>(null);
   const [showFreightDialog, setShowFreightDialog] = useState(false);
   const [showConditionsDialog, setShowConditionsDialog] = useState(false);
+  const [showClientDialog, setShowClientDialog] = useState(false);
 
   const [showDiscountDialog, setShowDiscountDialog] = useState(false);
   const [discountInput, setDiscountInput] = useState({ discount: '', discountPct: '' });
@@ -170,12 +173,27 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
       )}
 
       <Card>
-        <CardHeader><CardTitle>Cliente</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
+          <CardTitle>Cliente</CardTitle>
+          {canEditDiscount && (
+            <Button size="sm" variant="outline" onClick={() => setShowClientDialog(true)}>
+              <Pencil size={14} /> Editar
+            </Button>
+          )}
+        </CardHeader>
         <CardContent className="text-sm space-y-1">
           <p><strong>Nome:</strong> {data.client?.name ?? data.clientName ?? '-'}</p>
-          <p><strong>Telefone:</strong> {data.clientPhone ?? '-'}</p>
-          <p><strong>Email:</strong> {data.clientEmail ?? '-'}</p>
-          <p><strong>CPF/CNPJ:</strong> {data.clientCpfCnpj ?? data.client?.cpfCnpj ?? '-'}</p>
+          <p><strong>Telefone:</strong> {data.client?.phone || data.clientPhone || '-'}</p>
+          <p><strong>Email:</strong> {data.client?.email || data.clientEmail || '-'}</p>
+          <p><strong>CPF/CNPJ:</strong> {data.client?.cpfCnpj || data.clientCpfCnpj || '-'}</p>
+          {(data.client?.address || data.client?.city) && (
+            <p>
+              <strong>Endereço:</strong>{' '}
+              {[data.client?.address, [data.client?.city, data.client?.state].filter(Boolean).join('/')]
+                .filter(Boolean)
+                .join(' — ')}
+            </p>
+          )}
           <p><strong>Endereço de entrega:</strong> {data.deliveryAddress ?? '-'}</p>
         </CardContent>
       </Card>
@@ -200,19 +218,31 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
                 return (
                   <tr key={item.id} className="border-b border-gray-50 last:border-0">
                     <td className="px-5 py-3">
-                      {item.marble?.name}
-                      {hasServiceBreakdown && (
-                        <div className="text-xs text-gray-400 mt-0.5">
-                          Material: {formatCurrency((item.materialValue ?? 0) * item.quantity)}
-                          {item.includeAcabamento && ` · Acabamento/frontão: ${formatCurrency((item.acabamentoValue ?? 0) * item.quantity)}`}
-                          {item.includeInstalacao && ` · Instalação: ${formatCurrency((item.instalacaoValue ?? 0) * item.quantity)}`}
+                      <div className="flex items-center gap-3">
+                        <Slab3D
+                          imageUrl={item.marble?.imageUrls?.[0]}
+                          widthCm={item.widthCm}
+                          heightCm={item.heightCm}
+                          thicknessMm={item.thicknessMm}
+                          size={64}
+                          label={item.marble?.name}
+                        />
+                        <div className="min-w-0">
+                          {item.marble?.name}
+                          {hasServiceBreakdown && (
+                            <div className="text-xs text-gray-400 mt-0.5">
+                              Material: {formatCurrency((item.materialValue ?? 0) * item.quantity)}
+                              {item.includeAcabamento && ` · Acabamento/frontão: ${formatCurrency((item.acabamentoValue ?? 0) * item.quantity)}`}
+                              {item.includeInstalacao && ` · Instalação: ${formatCurrency((item.instalacaoValue ?? 0) * item.quantity)}`}
+                            </div>
+                          )}
+                          {item.extras && item.extras.length > 0 && (
+                            <div className="text-xs text-gray-400 mt-0.5">
+                              + {item.extras.map((ex) => `${ex.name} (${formatCurrency(ex.price)})`).join(', ')}
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {item.extras && item.extras.length > 0 && (
-                        <div className="text-xs text-gray-400 mt-0.5">
-                          + {item.extras.map((ex) => `${ex.name} (${formatCurrency(ex.price)})`).join(', ')}
-                        </div>
-                      )}
+                      </div>
                     </td>
                     <td className="px-5 py-3">{item.widthCm}x{item.heightCm}cm ({item.thicknessMm}mm)</td>
                     <td className="px-5 py-3">{item.areaM2.toFixed(2)} m²</td>
@@ -376,6 +406,13 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
           </Button>
         </div>
       </Dialog>
+
+      <QuoteClientDialog
+        quote={data}
+        open={showClientDialog}
+        onClose={() => setShowClientDialog(false)}
+        onSaved={() => queryClient.invalidateQueries({ queryKey: ['quote', id] })}
+      />
 
       <QuoteConditionsDialog
         quote={data}

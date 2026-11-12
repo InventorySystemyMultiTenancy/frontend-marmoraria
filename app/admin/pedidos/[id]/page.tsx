@@ -10,9 +10,11 @@ import { Badge } from '@/components/ui/badge';
 import { Input, Label, Select, Textarea } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
 import { QuoteItemEditDialog } from '@/components/admin/QuoteItemEditDialog';
+import { Slab3D } from '@/components/ui/Slab3D';
 import { ShowExtrasToggle } from '@/components/admin/ShowExtrasToggle';
 import { QuoteFreightDialog } from '@/components/admin/QuoteFreightDialog';
 import { QuoteConditionsDialog } from '@/components/admin/QuoteConditionsDialog';
+import { QuoteClientDialog } from '@/components/admin/QuoteClientDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -45,6 +47,7 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
   const [editingItem, setEditingItem] = useState<QuoteItem | null>(null);
   const [showFreightDialog, setShowFreightDialog] = useState(false);
   const [showConditionsDialog, setShowConditionsDialog] = useState(false);
+  const [showClientDialog, setShowClientDialog] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -222,12 +225,27 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Cliente</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
+          <CardTitle>Cliente</CardTitle>
+          {canEditQuote && quote && (
+            <Button size="sm" variant="outline" onClick={() => setShowClientDialog(true)}>
+              <Pencil size={14} /> Editar
+            </Button>
+          )}
+        </CardHeader>
         <CardContent className="text-sm space-y-1">
           <p><strong>Nome:</strong> {quote?.client?.name ?? quote?.clientName ?? '-'}</p>
-          <p><strong>Telefone:</strong> {quote?.client?.phone ?? quote?.clientPhone ?? '-'}</p>
-          <p><strong>Email:</strong> {quote?.client?.email ?? quote?.clientEmail ?? '-'}</p>
-          <p><strong>CPF/CNPJ:</strong> {quote?.client?.cpfCnpj ?? quote?.clientCpfCnpj ?? '-'}</p>
+          <p><strong>Telefone:</strong> {quote?.client?.phone || quote?.clientPhone || '-'}</p>
+          <p><strong>Email:</strong> {quote?.client?.email || quote?.clientEmail || '-'}</p>
+          <p><strong>CPF/CNPJ:</strong> {quote?.client?.cpfCnpj || quote?.clientCpfCnpj || '-'}</p>
+          {(quote?.client?.address || quote?.client?.city) && (
+            <p>
+              <strong>Endereço:</strong>{' '}
+              {[quote?.client?.address, [quote?.client?.city, quote?.client?.state].filter(Boolean).join('/')]
+                .filter(Boolean)
+                .join(' — ')}
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -293,19 +311,31 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
                   {quote.items.map((item) => (
                     <tr key={item.id} className="border-b border-gray-50 last:border-0">
                       <td className="px-5 py-3">
-                        {item.marble?.name}
-                        {(item.includeAcabamento || item.includeInstalacao) && (
-                          <div className="text-xs text-gray-400 mt-0.5">
-                            Material: {formatCurrency((item.materialValue ?? 0) * item.quantity)}
-                            {item.includeAcabamento && ` · Acabamento/frontão: ${formatCurrency((item.acabamentoValue ?? 0) * item.quantity)}`}
-                            {item.includeInstalacao && ` · Instalação: ${formatCurrency((item.instalacaoValue ?? 0) * item.quantity)}`}
+                        <div className="flex items-center gap-3">
+                          <Slab3D
+                            imageUrl={item.marble?.imageUrls?.[0]}
+                            widthCm={item.widthCm}
+                            heightCm={item.heightCm}
+                            thicknessMm={item.thicknessMm}
+                            size={64}
+                            label={item.marble?.name}
+                          />
+                          <div className="min-w-0">
+                            {item.marble?.name}
+                            {(item.includeAcabamento || item.includeInstalacao) && (
+                              <div className="text-xs text-gray-400 mt-0.5">
+                                Material: {formatCurrency((item.materialValue ?? 0) * item.quantity)}
+                                {item.includeAcabamento && ` · Acabamento/frontão: ${formatCurrency((item.acabamentoValue ?? 0) * item.quantity)}`}
+                                {item.includeInstalacao && ` · Instalação: ${formatCurrency((item.instalacaoValue ?? 0) * item.quantity)}`}
+                              </div>
+                            )}
+                            {item.extras && item.extras.length > 0 && (
+                              <div className="text-xs text-gray-400 mt-0.5">
+                                + {item.extras.map((ex) => `${ex.name} (${formatCurrency(ex.price)})`).join(', ')}
+                              </div>
+                            )}
                           </div>
-                        )}
-                        {item.extras && item.extras.length > 0 && (
-                          <div className="text-xs text-gray-400 mt-0.5">
-                            + {item.extras.map((ex) => `${ex.name} (${formatCurrency(ex.price)})`).join(', ')}
-                          </div>
-                        )}
+                        </div>
                       </td>
                       <td className="px-5 py-3">{item.widthCm}x{item.heightCm}cm ({item.thicknessMm}mm)</td>
                       <td className="px-5 py-3">{item.areaM2.toFixed(2)} m²</td>
@@ -439,6 +469,13 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
           <Link href={`/admin/orcamentos/${quote.id}`} className="inline-block text-sm text-marble-gold hover:underline">
             Ver orçamento original ({quote.quoteNumber})
           </Link>
+
+          <QuoteClientDialog
+            quote={quote}
+            open={showClientDialog}
+            onClose={() => setShowClientDialog(false)}
+            onSaved={refreshOrder}
+          />
 
           <QuoteConditionsDialog
             quote={quote}

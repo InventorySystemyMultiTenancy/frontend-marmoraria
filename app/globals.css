@@ -62,3 +62,73 @@ body {
 .text-balance {
   text-wrap: balance;
 }
+
+/* ─── Pré-visualização 3D das peças (components/ui/Slab3D.tsx) ─── */
+.slab3d {
+  position: relative;
+  flex-shrink: 0;
+  perspective: 420px;
+  cursor: grab;
+  touch-action: pan-y; /* arrastar na horizontal gira; rolar a página continua funcionando */
+  user-select: none;
+  border-radius: 10px;
+  background: radial-gradient(circle at 50% 60%, rgba(201, 169, 110, 0.14), transparent 70%);
+}
+.slab3d:active { cursor: grabbing; }
+.slab3d-float,
+.slab3d-scene {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+.slab3d-float { animation: slab3d-float 3.6s ease-in-out infinite; }
+.slab3d:hover .slab3d-float { animation-play-state: paused; }
+.slab3d-scene {
+  left: 50%;
+  top: 46%;
+  width: 0;
+  height: 0;
+}
+.slab3d-face {
+  outline: 1px solid rgba(201, 169, 110, 0.55);
+  outline-offset: -1px;
+  box-shadow: 0 0 6px rgba(201, 169, 110, 0.35);
+}
+/* "holograma": linhas de varredura + reflexo no tampo */
+.slab3d-top::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 3px),
+    linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.35) 48%, transparent 62%);
+  background-size: 100% 100%, 250% 100%;
+  background-position: 0 0, 100% 0;
+  transition: background-position 0.8s ease;
+}
+.slab3d:hover .slab3d-top::after { background-position: 0 0, 0% 0; }
+.slab3d-shadow {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 8%;
+  height: 12%;
+  border-radius: 50%;
+  background: radial-gradient(rgba(201, 169, 110, 0.45), transparent 70%);
+  filter: blur(2px);
+  animation: slab3d-shadow 3.6s ease-in-out infinite;
+}
+.slab3d:hover .slab3d-shadow { animation-play-state: paused; }
+@keyframes slab3d-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@keyframes slab3d-shadow {
+  0%, 100% { opacity: 0.9; transform: scaleX(1); }
+  50% { opacity: 0.55; transform: scaleX(0.85); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slab3d-float,
+  .slab3d-shadow { animation: none; }
+  .slab3d-top::after { transition: none; }
+}
