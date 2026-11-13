@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Building2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { Input, Label } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/store/authStore';
 import { Company } from '@/types';
+import { PageHeader } from '@/components/admin/PageHeader';
 
 export default function EmpresaPage() {
   const queryClient = useQueryClient();
@@ -66,12 +68,12 @@ export default function EmpresaPage() {
 
   return (
     <div className="space-y-4 max-w-2xl">
-      <div>
-        <h1 className="text-2xl font-bold text-marble-dark">Configurações da Empresa</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Dados exibidos no PDF de orçamentos, no site público e usados no cálculo de frete.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Gestão"
+        icon={Building2}
+        title="Configurações da Empresa"
+        description="Dados exibidos no PDF de orçamentos, no site público e usados no cálculo de frete."
+      />
 
       <Card>
         <CardHeader><CardTitle>Dados cadastrais</CardTitle></CardHeader>

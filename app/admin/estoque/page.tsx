@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Boxes, Layers, Ruler, Gem } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Marble, StockItem, StockStatus } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/admin/DataTable';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { PageHeader } from '@/components/admin/PageHeader';
+import { StatCard } from '@/components/admin/StatCard';
 
 const STATUS_VARIANT: Record<StockStatus, 'success' | 'warning' | 'default' | 'danger'> = {
   AVAILABLE: 'success',
@@ -87,17 +89,28 @@ export default function EstoquePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-2xl font-bold text-marble-dark">Estoque</h1>
-        <Button onClick={() => setShowForm(true)} className="self-start sm:self-auto">
-          <Plus size={16} /> Nova entrada
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Operação"
+        icon={Boxes}
+        title="Estoque"
+        description="Peças disponíveis, área total e valor em estoque."
+        actions={
+          <Button onClick={() => setShowForm(true)}>
+            <Plus size={16} /> Nova entrada
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card><CardContent><p className="text-sm text-gray-500">Itens disponíveis</p><p className="text-2xl font-bold text-marble-dark">{summary?.totalItems ?? 0}</p></CardContent></Card>
-        <Card><CardContent><p className="text-sm text-gray-500">Área total</p><p className="text-2xl font-bold text-marble-dark">{(summary?.totalAreaM2 ?? 0).toFixed(1)} m²</p></CardContent></Card>
-        <Card><CardContent><p className="text-sm text-gray-500">Valor em estoque</p><p className="text-2xl font-bold text-marble-gold">{formatCurrency(summary?.totalValue ?? 0)}</p></CardContent></Card>
+        <StatCard index={1} label="Itens disponíveis" icon={Layers} value={summary?.totalItems ?? 0} />
+        <StatCard
+          index={2}
+          label="Área total"
+          icon={Ruler}
+          value={summary?.totalAreaM2 ?? 0}
+          format={(n) => `${n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} m²`}
+        />
+        <StatCard index={3} label="Valor em estoque" icon={Gem} tone="gold" value={summary?.totalValue ?? 0} format={formatCurrency} />
       </div>
 
       <DataTable

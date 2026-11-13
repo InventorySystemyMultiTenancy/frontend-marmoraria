@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Wallet, TrendingUp, TrendingDown, Percent } from 'lucide-react';
 import { api } from '@/lib/api';
 import { FinancialEntry, FinancialType } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataTable } from '@/components/admin/DataTable';
 import { FinancialChart } from '@/components/admin/FinancialChart';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { PageHeader } from '@/components/admin/PageHeader';
+import { StatCard } from '@/components/admin/StatCard';
 
 const schema = z.object({
   type: z.enum(['INCOME', 'EXPENSE']),
@@ -73,16 +75,28 @@ export default function FinanceiroPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-2xl font-bold text-marble-dark">Financeiro</h1>
-        <Button onClick={() => setShowForm(true)} className="self-start sm:self-auto"><Plus size={16} /> Novo lançamento</Button>
-      </div>
+      <PageHeader
+        eyebrow="Gestão"
+        icon={Wallet}
+        title="Financeiro"
+        description="Lançamentos de receitas e despesas da marmoraria."
+        actions={
+          <Button onClick={() => setShowForm(true)}><Plus size={16} /> Novo lançamento</Button>
+        }
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <Card><CardContent><p className="text-sm text-gray-500">Receita</p><p className="text-2xl font-bold text-green-600">{formatCurrency(summary?.income ?? 0)}</p></CardContent></Card>
-        <Card><CardContent><p className="text-sm text-gray-500">Despesas</p><p className="text-2xl font-bold text-red-600">{formatCurrency(summary?.expense ?? 0)}</p></CardContent></Card>
-        <Card><CardContent><p className="text-sm text-gray-500">Lucro</p><p className="text-2xl font-bold text-marble-dark">{formatCurrency(summary?.profit ?? 0)}</p></CardContent></Card>
-        <Card><CardContent><p className="text-sm text-gray-500">Margem</p><p className="text-2xl font-bold text-marble-gold">{(summary?.margin ?? 0).toFixed(1)}%</p></CardContent></Card>
+        <StatCard index={1} label="Receita" icon={TrendingUp} tone="positive" value={summary?.income ?? 0} format={formatCurrency} />
+        <StatCard index={2} label="Despesas" icon={TrendingDown} tone="negative" value={summary?.expense ?? 0} format={formatCurrency} />
+        <StatCard
+          index={3}
+          label="Lucro"
+          icon={Wallet}
+          tone={(summary?.profit ?? 0) < 0 ? 'negative' : 'default'}
+          value={summary?.profit ?? 0}
+          format={formatCurrency}
+        />
+        <StatCard index={4} label="Margem" icon={Percent} tone="gold" value={summary?.margin ?? 0} format={(n) => `${n.toFixed(1)}%`} />
       </div>
 
       <Card>

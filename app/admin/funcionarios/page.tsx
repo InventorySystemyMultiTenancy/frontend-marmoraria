@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Shield, Ban } from 'lucide-react';
+import { Plus, Shield, Ban, UserCog } from 'lucide-react';
 import { api } from '@/lib/api';
 import { User, UserRole, PERMISSION_GROUPS, PERMISSION_LABELS, UserPermissions } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/admin/DataTable';
 import { useAuthStore } from '@/store/authStore';
+import { PageHeader } from '@/components/admin/PageHeader';
 
 const createSchema = z.object({
   name: z.string().min(2, 'Nome obrigatório'),
@@ -83,10 +84,15 @@ export default function FuncionariosPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-2xl font-bold text-marble-dark">Funcionários</h1>
-        <Button onClick={() => setShowForm(true)} className="self-start sm:self-auto"><Plus size={16} /> Novo funcionário</Button>
-      </div>
+      <PageHeader
+        eyebrow="Gestão"
+        icon={UserCog}
+        title="Funcionários"
+        description="Acessos e permissões da equipe."
+        actions={
+          <Button onClick={() => setShowForm(true)}><Plus size={16} /> Novo funcionário</Button>
+        }
+      />
 
       <DataTable
         data={data?.users ?? []}

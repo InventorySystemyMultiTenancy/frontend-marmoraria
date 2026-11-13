@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Sigma } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { Input, Label, Textarea } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/store/authStore';
 import { formatCurrency } from '@/lib/utils';
+import { PageHeader } from '@/components/admin/PageHeader';
 
 interface VariableDoc { name: string; description: string }
 interface FormulaConfig { id: string; expression: string; description?: string | null; createdAt: string }
@@ -72,7 +74,12 @@ export default function FormulaPage() {
 
   return (
     <div className="space-y-4 max-w-3xl">
-      <h1 className="text-2xl font-bold text-marble-dark">Fórmula de Precificação</h1>
+      <PageHeader
+        eyebrow="Gestão"
+        icon={Sigma}
+        title="Fórmula de Precificação"
+        description="Como o preço de cada peça é calculado nos orçamentos."
+      />
 
       <Card>
         <CardHeader><CardTitle>Variáveis disponíveis</CardTitle></CardHeader>

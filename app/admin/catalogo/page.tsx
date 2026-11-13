@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2, Upload, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Upload, X, Gem } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Marble, MARBLE_TYPE_LABELS, MarbleType } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/admin/DataTable';
 import { formatCurrency } from '@/lib/utils';
+import { PageHeader } from '@/components/admin/PageHeader';
 
 const schema = z.object({
   name: z.string().min(2, 'Nome obrigatório'),
@@ -117,12 +118,17 @@ export default function CatalogoAdminPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-2xl font-bold text-marble-dark">Catálogo de Mármores</h1>
-        <Button onClick={openCreate} className="self-start sm:self-auto">
-          <Plus size={16} /> Novo mármore
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Operação"
+        icon={Gem}
+        title="Catálogo de Mármores"
+        description="Materiais exibidos no site e usados nos orçamentos."
+        actions={
+          <Button onClick={openCreate}>
+            <Plus size={16} /> Novo mármore
+          </Button>
+        }
+      />
 
       <Input
         placeholder="Buscar por nome..."

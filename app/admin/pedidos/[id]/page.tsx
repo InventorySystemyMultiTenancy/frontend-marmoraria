@@ -182,7 +182,7 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
               </button>
             </div>
           ) : (
-            <h1 className="text-2xl font-bold text-marble-dark flex items-center gap-2 flex-wrap">
+            <h1 className="ds-title flex items-center gap-2 flex-wrap">
               {data.name || data.orderNumber}
               {canUpdateStatus && (
                 <button

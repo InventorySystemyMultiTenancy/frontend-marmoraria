@@ -23,16 +23,16 @@ export function Dialog({
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="ds-backdrop absolute inset-0 bg-ink/55 backdrop-blur-[3px]" onClick={onClose} />
       <div
         className={cn(
-          'relative z-10 w-full max-w-lg rounded-xl bg-white p-4 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto',
+          'ds-dialog relative z-10 w-full max-w-lg rounded-2xl border border-marble-gold/20 bg-gradient-to-b from-white to-[#fdfbf8] p-4 sm:p-6 shadow-[0_40px_80px_-30px_rgba(21,17,15,0.6)] max-h-[90vh] overflow-y-auto',
           className
         )}
       >
         <button
           onClick={onClose}
-          className="absolute right-3 top-3 sm:right-4 sm:top-4 text-gray-400 hover:text-gray-600 cursor-pointer"
+          className="absolute right-3 top-3 sm:right-4 sm:top-4 rounded-lg p-1 text-gray-400 transition-colors hover:bg-marble-gold/10 hover:text-ink cursor-pointer"
           aria-label="Fechar"
         >
           <X size={18} />

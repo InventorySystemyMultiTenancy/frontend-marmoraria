@@ -55,10 +55,10 @@ export default function LoginPage() {
       />
       <div className="absolute inset-0 bg-marble-cream/80 -z-10" />
 
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8">
+      <div className="ds-card ds-rise w-full max-w-sm p-8 !bg-white/90 backdrop-blur-md !border-marble-gold/25 shadow-[0_40px_80px_-30px_rgba(21,17,15,0.45)]">
         <div className="text-center mb-6">
-          <Image src="/logo.png" alt="Logo" width={72} height={72} className="mx-auto mb-3 rounded-full" />
-          <h1 className="text-2xl font-bold text-marble-dark">Marmoraria Pedras Pedroza</h1>
+          <Image src="/logo.png" alt="Logo" width={72} height={72} className="mx-auto mb-3 rounded-full ring-2 ring-marble-gold/40 shadow-[0_10px_30px_-8px_rgba(201,169,110,0.8)]" />
+          <h1 className="ds-title !text-2xl">Marmoraria Pedras Pedroza</h1>
           <p className="text-sm text-marble-gray mt-1">Painel administrativo</p>
         </div>
 

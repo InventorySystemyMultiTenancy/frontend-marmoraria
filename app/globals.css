@@ -132,3 +132,315 @@ body {
   .slab3d-shadow { animation: none; }
   .slab3d-top::after { transition: none; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Design system do painel admin — "Ônix & Ouro"
+   Superfícies claras de mármore, estrutura em ônix, ouro para destaque.
+   Animações só com transform/opacity; CSS no lugar de JS sempre que possível.
+   ══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --ink: #15110f;
+  --ink-2: #241d19;
+  --gold-light: #ead6a8;
+  --gold-deep: #a6834b;
+  --line: rgba(26, 22, 20, 0.08);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-gold-light: var(--gold-light);
+  --color-gold-deep: var(--gold-deep);
+}
+
+/* Em @layer components: os utilitários do Tailwind (hidden, p-0, etc.)
+   continuam podendo sobrescrever estas classes. */
+@layer components {
+/* Fundo do painel: creme com luz dourada e veios de mármore bem sutis */
+.admin-canvas {
+  position: relative;
+  background:
+    radial-gradient(1100px 520px at 100% -10%, rgba(201, 169, 110, 0.13), transparent 60%),
+    radial-gradient(900px 600px at -10% 110%, rgba(201, 169, 110, 0.08), transparent 60%),
+    linear-gradient(180deg, #f8f6f2, #f1ede6);
+}
+.admin-canvas::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: url('/textures/marble-white.webp') center / 640px;
+  opacity: 0.16;
+  mix-blend-mode: multiply;
+}
+
+/* Cards */
+.ds-card {
+  position: relative;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, #ffffff, #fdfbf8);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 2px rgba(26, 22, 20, 0.04),
+    0 10px 30px -18px rgba(26, 22, 20, 0.22);
+  transition: box-shadow 0.35s var(--ease-out), border-color 0.35s var(--ease-out), transform 0.35s var(--ease-out);
+}
+.ds-lift:hover {
+  transform: translateY(-3px);
+  border-color: rgba(201, 169, 110, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 2px 4px rgba(26, 22, 20, 0.05),
+    0 22px 44px -22px rgba(26, 22, 20, 0.35),
+    0 0 0 4px rgba(201, 169, 110, 0.07);
+}
+
+/* Revelar ao rolar — animação dirigida pela rolagem (scroll-driven), sem JS.
+   Navegadores sem suporte simplesmente mostram o conteúdo. */
+@supports (animation-timeline: view()) {
+  .ds-reveal {
+    animation: ds-reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 55%;
+  }
+}
+@keyframes ds-reveal {
+  from { opacity: 0; translate: 0 22px; scale: 0.985; }
+  to { opacity: 1; translate: none; scale: none; }
+}
+
+/* Entrada ao abrir a página (escalonada via --i) */
+.ds-rise {
+  animation: ds-rise 0.6s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+@keyframes ds-rise {
+  from { opacity: 0; translate: 0 14px; }
+  to { opacity: 1; translate: none; }
+}
+
+/* Tipografia */
+.ds-title {
+  font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  background: linear-gradient(180deg, var(--ink), #4a3e35);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.ds-eyebrow {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+}
+
+/* Ícone em "pedra": tile com relevo e brilho dourado */
+.ds-icon-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 14px;
+  color: var(--gold-light);
+  background: linear-gradient(145deg, #2d2520, var(--ink));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.45),
+    0 8px 18px -8px rgba(21, 17, 15, 0.6),
+    0 0 0 1px rgba(201, 169, 110, 0.25);
+  transition: transform 0.4s var(--ease-out);
+}
+.group:hover .ds-icon-tile { transform: translateY(-1px) rotate(-4deg) scale(1.05); }
+
+/* Botões: brilho que atravessa no hover e "afunda" no clique */
+.ds-btn { position: relative; overflow: hidden; isolation: isolate; }
+.ds-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.35) 50%, transparent 65%);
+  transform: translateX(-120%);
+  transition: transform 0.7s var(--ease-out);
+}
+.ds-btn:hover::after { transform: translateX(120%); }
+.ds-btn:active { transform: translateY(1px) scale(0.98); }
+
+/* Diálogos */
+.ds-backdrop { animation: ds-fade 0.2s ease-out both; }
+.ds-dialog { animation: ds-pop 0.32s var(--ease-out) both; }
+@keyframes ds-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ds-pop {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Tabela */
+.ds-table thead th {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a8079;
+}
+.ds-table tbody tr { transition: background-color 0.2s ease; }
+.ds-table tbody tr:hover { background: linear-gradient(90deg, rgba(201, 169, 110, 0.09), rgba(201, 169, 110, 0.02)); }
+
+/* Atualizar: destaque rápido quando um valor muda */
+.ds-flash { animation: ds-flash 0.9s var(--ease-out); }
+@keyframes ds-flash {
+  0% { text-shadow: 0 0 0 rgba(201, 169, 110, 0); }
+  30% { text-shadow: 0 0 18px rgba(201, 169, 110, 0.75); }
+  100% { text-shadow: 0 0 0 rgba(201, 169, 110, 0); }
+}
+
+/* ─── Dashboard ─── */
+.dash-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  color: #fff;
+  background:
+    radial-gradient(600px 300px at 85% 30%, rgba(201, 169, 110, 0.28), transparent 65%),
+    radial-gradient(500px 260px at 0% 100%, rgba(201, 169, 110, 0.1), transparent 70%),
+    linear-gradient(135deg, #221b17, var(--ink) 55%, #0d0b0a);
+  box-shadow: 0 30px 60px -30px rgba(21, 17, 15, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.dash-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('/textures/marble-noir.webp') center / 520px;
+  opacity: 0.35;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+.dash-hero::after {
+  /* fio dourado na borda */
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(120deg, rgba(234, 214, 168, 0.55), transparent 35%, transparent 65%, rgba(201, 169, 110, 0.35));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.dash-chip {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(8px);
+  transition: all 0.25s var(--ease-out);
+}
+.dash-chip:hover { border-color: rgba(201, 169, 110, 0.6); color: #fff; }
+.dash-chip[data-active='true'] {
+  border-color: transparent;
+  color: var(--ink);
+  background: linear-gradient(135deg, var(--gold-light), var(--marble-gold));
+  box-shadow: 0 6px 18px -8px rgba(201, 169, 110, 0.8);
+}
+
+/* Card de receita (destaque): ônix com iluminação dourada */
+.dash-feature {
+  color: #fff;
+  background:
+    radial-gradient(420px 220px at 100% 0%, rgba(201, 169, 110, 0.32), transparent 60%),
+    linear-gradient(150deg, #2a221d, var(--ink) 60%);
+  border-color: rgba(201, 169, 110, 0.35);
+  box-shadow: 0 24px 50px -26px rgba(21, 17, 15, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Monólito 3D do hero: placas de mármore empilhadas, flutuando */
+.monolith {
+  position: relative;
+  perspective: 900px;
+}
+.monolith-rig,
+.monolith-slab {
+  position: absolute;
+  transform-style: preserve-3d;
+}
+.monolith-rig {
+  inset: 0;
+  transition: transform 0.6s var(--ease-out);
+}
+.monolith-slab { left: 50%; top: 50%; width: 0; height: 0; }
+.monolith-face {
+  position: absolute;
+  backface-visibility: hidden;
+  outline: 1px solid rgba(234, 214, 168, 0.35);
+  outline-offset: -1px;
+}
+.monolith-top::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.45) 47%, transparent 60%);
+  background-size: 260% 100%;
+  animation: monolith-sheen 7s ease-in-out infinite;
+}
+.monolith-float { animation: monolith-float 6s ease-in-out infinite; }
+.monolith-float[data-layer='1'] { animation-delay: -2s; }
+.monolith-float[data-layer='2'] { animation-delay: -4s; }
+.monolith-glow {
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  bottom: 6%;
+  height: 18%;
+  border-radius: 50%;
+  background: radial-gradient(rgba(201, 169, 110, 0.55), transparent 70%);
+  filter: blur(10px);
+  animation: monolith-glow 6s ease-in-out infinite;
+}
+.monolith-spark {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--gold-light);
+  box-shadow: 0 0 10px 2px rgba(234, 214, 168, 0.7);
+  animation: monolith-spark 5s ease-in-out infinite;
+}
+@keyframes monolith-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -8px; }
+}
+@keyframes monolith-sheen {
+  0%, 60% { background-position: 130% 0; }
+  85%, 100% { background-position: -30% 0; }
+}
+@keyframes monolith-glow {
+  0%, 100% { opacity: 0.9; transform: scaleX(1); }
+  50% { opacity: 0.55; transform: scaleX(0.85); }
+}
+@keyframes monolith-spark {
+  0%, 100% { opacity: 0; transform: translateY(6px) scale(0.6); }
+  50% { opacity: 1; transform: translateY(-10px) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-reveal,
+  .ds-rise,
+  .ds-dialog,
+  .ds-backdrop,
+  .ds-flash,
+  .monolith-float,
+  .monolith-top::after,
+  .monolith-glow,
+  .monolith-spark { animation: none !important; }
+  .ds-lift:hover,
+  .ds-btn:active { transform: none; }
+  .ds-btn::after { display: none; }
+  .monolith-rig { transition: none; }
+}
+} /* @layer components */

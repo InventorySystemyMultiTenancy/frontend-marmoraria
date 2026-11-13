@@ -46,18 +46,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 min-w-0 h-screen flex flex-col md:ml-60">
-        <header className="md:hidden flex items-center gap-3 px-4 py-3 bg-marble-dark text-white shrink-0">
+      <div className="admin-canvas flex-1 min-w-0 h-screen flex flex-col md:ml-64">
+        <header className="md:hidden relative z-10 flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-ink-2 to-ink text-white shrink-0 shadow-[0_8px_24px_-12px_rgba(21,17,15,0.7)] border-b border-marble-gold/20">
           <button
             onClick={() => setSidebarOpen(true)}
             aria-label="Abrir menu"
-            className="p-1 -ml-1 cursor-pointer"
+            className="p-1.5 -ml-1 rounded-lg cursor-pointer transition-colors hover:bg-white/10"
           >
             <Menu size={22} />
           </button>
-          <span className="text-sm font-semibold text-marble-gold">Painel administrativo</span>
+          <span className="text-sm font-semibold bg-gradient-to-r from-gold-light to-marble-gold bg-clip-text text-transparent">Painel administrativo</span>
         </header>
-        <main className="flex-1 min-h-0 bg-gradient-to-br from-gray-50 to-gray-100 overflow-y-auto">
+        <main className="relative flex-1 min-h-0 overflow-y-auto">
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
@@ -65,7 +65,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="p-4 sm:p-6 max-w-7xl mx-auto"
+              className="px-4 py-5 sm:px-6 sm:py-7 lg:px-8 max-w-7xl mx-auto"
             >
               {children}
             </motion.div>

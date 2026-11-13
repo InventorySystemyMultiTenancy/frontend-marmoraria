@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Client } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { DataTable } from '@/components/admin/DataTable';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission } from '@/lib/permissions';
+import { PageHeader } from '@/components/admin/PageHeader';
 
 const schema = z.object({
   name: z.string().min(2, 'Nome obrigatório'),
@@ -89,14 +90,19 @@ export default function ClientesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-2xl font-bold text-marble-dark">Clientes</h1>
-        {canCreate && (
-          <Button onClick={openCreate} className="self-start sm:self-auto">
-            <Plus size={16} /> Novo cliente
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        eyebrow="Comercial"
+        icon={Users}
+        title="Clientes"
+        description="Cadastro de clientes usado nos orçamentos e pedidos."
+        actions={
+          canCreate && (
+            <Button onClick={openCreate}>
+              <Plus size={16} /> Novo cliente
+            </Button>
+          )
+        }
+      />
 
       <Input
         placeholder="Buscar por nome, email ou telefone..."

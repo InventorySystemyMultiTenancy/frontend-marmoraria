@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Plus, FileText } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Quote, QuoteStatus, QUOTE_STATUS_LABELS } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/admin/DataTable';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { PageHeader } from '@/components/admin/PageHeader';
 
 const STATUS_VARIANT: Record<QuoteStatus, 'success' | 'warning' | 'default' | 'danger' | 'info'> = {
   DRAFT: 'default',
@@ -34,14 +35,19 @@ export default function OrcamentosPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-2xl font-bold text-marble-dark">Orçamentos</h1>
-        <Link href="/admin/orcamentos/novo" className="self-start sm:self-auto">
-          <Button>
-            <Plus size={16} /> Novo orçamento
-          </Button>
-        </Link>
-      </div>
+      <PageHeader
+        eyebrow="Comercial"
+        icon={FileText}
+        title="Orçamentos"
+        description="Acompanhe, edite e aprove os orçamentos."
+        actions={
+          <Link href="/admin/orcamentos/novo">
+            <Button>
+              <Plus size={16} /> Novo orçamento
+            </Button>
+          </Link>
+        }
+      />
 
       <Select value={status} onChange={(e) => setStatus(e.target.value)} className="max-w-xs">
         <option value="">Todos os status</option>
