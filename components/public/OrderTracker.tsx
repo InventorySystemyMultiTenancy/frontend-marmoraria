@@ -18,9 +18,11 @@ interface TrackedOrderItem {
   thicknessMm: number;
   quantity: number;
   areaM2: number;
-  totalPrice: number;
+  // null = mármore sob consulta (sem valor definido pela equipe).
+  totalPrice: number | null;
+  priceOnRequest?: boolean;
   // Só vem preenchido se o admin marcou "mostrar custo adicional".
-  extras?: { name: string; price: number }[];
+  extras?: { name: string; price: number | null }[];
 }
 
 interface TrackedOrder {
@@ -34,11 +36,13 @@ interface TrackedOrder {
   quote: {
     quoteNumber: string;
     clientName: string | null;
-    subtotal: number;
+    // Com algum mármore sob consulta, subtotal e total vêm null (sem valor).
+    priceOnRequest?: boolean;
+    subtotal: number | null;
     discount: number;
     discountPct: number;
     freight: number;
-    total: number;
+    total: number | null;
     items: TrackedOrderItem[];
   };
 }
@@ -250,15 +254,28 @@ function OrderCard({ order }: { order: TrackedOrder }) {
                 </p>
                 {item.extras && item.extras.length > 0 && (
                   <p className="text-xs text-white/50">
-                    + {item.extras.map((ex) => `${ex.name} (${formatCurrency(ex.price)})`).join(', ')}
+                    + {item.extras.map((ex) => (ex.price == null ? ex.name : `${ex.name} (${formatCurrency(ex.price)})`)).join(', ')}
                   </p>
                 )}
               </div>
-              <p className="text-sm font-semibold text-marble-gold">{formatCurrency(item.totalPrice)}</p>
+              <p className="text-sm font-semibold text-marble-gold">
+                {item.totalPrice == null ? 'Sob consulta' : formatCurrency(item.totalPrice)}
+              </p>
             </div>
           ))}
         </div>
 
+        {order.quote.total == null || order.quote.subtotal == null ? (
+          <div className="mt-4 pt-4 border-t border-white/10 text-sm">
+            <div className="flex justify-between text-lg font-bold">
+              <span>Total</span>
+              <span className="text-marble-gold">Sob consulta</span>
+            </div>
+            <p className="text-xs text-white/50 mt-1">
+              Pedido com mármore sob consulta — nossa equipe informa o valor final.
+            </p>
+          </div>
+        ) : (
         <div className="mt-4 pt-4 border-t border-white/10 space-y-1 text-sm">
           <div className="flex justify-between text-white/60">
             <span>Subtotal</span>
@@ -281,6 +298,7 @@ function OrderCard({ order }: { order: TrackedOrder }) {
             <span className="text-marble-gold">{formatCurrency(order.quote.total)}</span>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

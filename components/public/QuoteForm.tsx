@@ -1,11 +1,11 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useQuery, useQueries, useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Camera, Sparkles, X, Plus, Trash2, Pencil } from 'lucide-react';
+import { Check, Camera, Sparkles, X, Plus, Trash2, Pencil, Search } from 'lucide-react';
 import { publicApi } from '@/lib/api';
 import { Company, Marble } from '@/types';
 import { formatCurrency } from '@/lib/utils';
@@ -83,11 +83,27 @@ function pieceBreakdown(piece: PieceDraft, marbles: Marble[], preview?: PreviewR
   return { marble, areaM2: localBreakdown.areaM2, extrasTotal, total };
 }
 
-function servicesLabel(piece: PieceDraft) {
+function servicesLabel(piece: PieceDraft, onRequest = false) {
   const services: string[] = [];
   if (piece.includeAcabamento) services.push('acabamento/frontão');
   if (piece.includeInstalacao) services.push('instalação');
-  return services.length ? `Inclui ${services.join(' e ')} — já somado ao subtotal` : null;
+  if (!services.length) return null;
+  return onRequest ? `Inclui ${services.join(' e ')}` : `Inclui ${services.join(' e ')} — já somado ao subtotal`;
+}
+
+// Mármore "sob consulta" (sem preço por m²): nenhum valor da peça é mostrado —
+// nem com acabamento, instalação ou extras —, pois seria um valor parcial.
+function isOnRequest(marble: Marble | undefined) {
+  return Boolean(marble && marble.pricePerM2 == null);
+}
+
+// Busca sem acento e sem diferenciar maiúsculas ("calacata" acha "Calacatta").
+function normalize(text: string) {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
 }
 
 export function QuoteForm() {
@@ -114,11 +130,36 @@ export function QuoteForm() {
   const [aiResult, setAiResult] = useState<AiRecommendationResult | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  const { data } = useQuery({
-    queryKey: ['public-marbles-form'],
-    queryFn: async () => (await publicApi.get('/api/marbles/public', { params: { limit: 60 } })).data as { marbles: Marble[] },
+  // Catálogo inteiro carregado uma única vez (em páginas de 100): a busca por
+  // nome filtra na hora, no próprio navegador, sem esperar o servidor.
+  const { data, isLoading: marblesLoading } = useQuery({
+    queryKey: ['public-marbles-form-all'],
+    queryFn: async () => {
+      const all: Marble[] = [];
+      for (let page = 1; page <= 20; page++) {
+        const res = (await publicApi.get('/api/marbles/public', { params: { limit: 100, page } })).data as {
+          marbles: Marble[];
+          totalPages: number;
+        };
+        all.push(...res.marbles);
+        if (page >= (res.totalPages || 1)) break;
+      }
+      return { marbles: all };
+    },
+    staleTime: 5 * 60 * 1000,
   });
-  const marbles = data?.marbles ?? [];
+  const marbles = useMemo(() => data?.marbles ?? [], [data]);
+
+  const [marbleSearch, setMarbleSearch] = useState('');
+  const searchIndex = useMemo(
+    () => marbles.map((m) => ({ marble: m, key: normalize(`${m.name} ${m.color ?? ''} ${m.origin ?? ''}`) })),
+    [marbles]
+  );
+  const filteredMarbles = useMemo(() => {
+    const terms = normalize(marbleSearch).split(/\s+/).filter(Boolean);
+    if (!terms.length) return marbles;
+    return searchIndex.filter((e) => terms.every((t) => e.key.includes(t))).map((e) => e.marble);
+  }, [marbleSearch, searchIndex, marbles]);
 
   const { data: companyData } = useQuery({
     queryKey: ['public-company-form'],
@@ -158,12 +199,13 @@ export function QuoteForm() {
               includeInstalacao: piece.includeInstalacao,
             })
           ).data as PreviewResult,
-        enabled: Boolean(piece.marbleId && width > 0 && height > 0),
+        enabled: Boolean(piece.marbleId && width > 0 && height > 0 && !isOnRequest(marble)),
         staleTime: 60 * 1000,
       };
     }),
   });
 
+  const hasOnRequest = pieces.some((p) => isOnRequest(marbles.find((m) => m.id === p.marbleId)));
   const piecesTotal = pieces.reduce(
     (sum, p, idx) => sum + pieceBreakdown(p, marbles, previewQueries[idx]?.data).total,
     0
@@ -480,7 +522,8 @@ export function QuoteForm() {
                 <div className="space-y-3 mb-6">
                   {pieces.map((piece, idx) => {
                     const { marble, areaM2, extrasTotal, total } = pieceBreakdown(piece, marbles, previewQueries[idx]?.data);
-                    const services = servicesLabel(piece);
+                    const onRequest = isOnRequest(marble);
+                    const services = servicesLabel(piece, onRequest);
                     return (
                       <div key={piece.key} className="glass-panel p-4">
                         <div className="flex items-start justify-between gap-3">
@@ -505,18 +548,25 @@ export function QuoteForm() {
                         <div className="mt-3 text-xs text-white/60 space-y-0.5">
                           <div className="flex justify-between">
                             <span>Material ({areaM2.toFixed(2)} m²)</span>
-                            {marble?.pricePerM2 == null && <span>sob consulta</span>}
+                            {onRequest && <span>sob consulta</span>}
                           </div>
                           {services && <p className="text-marble-gold/80">{services}</p>}
-                          {extrasTotal > 0 && <div className="flex justify-between"><span>Extras</span><span>{formatCurrency(extrasTotal)}</span></div>}
+                          {piece.extras.length > 0 &&
+                            (onRequest ? (
+                              <p>Extras: {piece.extras.map((ex) => ex.name).join(', ')}</p>
+                            ) : (
+                              extrasTotal > 0 && (
+                                <div className="flex justify-between"><span>Extras</span><span>{formatCurrency(extrasTotal)}</span></div>
+                              )
+                            ))}
                           <div className="flex justify-between text-white font-semibold pt-1 border-t border-white/10 mt-1">
-                            <span>Subtotal da peça{marble?.pricePerM2 == null ? ' (+ material)' : ''}</span>
-                            <span>{formatCurrency(total)}</span>
+                            <span>Subtotal da peça</span>
+                            <span className={onRequest ? 'text-marble-gold' : ''}>{onRequest ? 'Sob consulta' : formatCurrency(total)}</span>
                           </div>
                         </div>
-                        {marble?.pricePerM2 == null && (
+                        {onRequest && (
                           <p className="text-xs text-marble-gold/80 mt-1">
-                            Preço do material sob consulta — valor final informado no orçamento.
+                            Mármore sob consulta — nossa equipe informa o valor desta peça no retorno do orçamento.
                           </p>
                         )}
                       </div>
@@ -529,9 +579,44 @@ export function QuoteForm() {
                 <p className="text-sm font-semibold text-white">{editingKey ? 'Editar peça' : 'Adicionar peça'}</p>
 
                 <div>
-                  <label className="text-sm text-white/60 mb-1 block">Mármore</label>
+                  <label htmlFor="marble-search" className="text-sm text-white/60 mb-1 block">Mármore</label>
+                  <div className="relative mb-2">
+                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+                    <input
+                      id="marble-search"
+                      type="search"
+                      value={marbleSearch}
+                      onChange={(e) => setMarbleSearch(e.target.value)}
+                      placeholder="Buscar mármore pelo nome..."
+                      autoComplete="off"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-9 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-marble-gold"
+                    />
+                    {marbleSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setMarbleSearch('')}
+                        aria-label="Limpar busca"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-white/50 hover:text-white cursor-pointer"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                  {draft.marbleId && (
+                    <p className="text-xs text-white/50 mb-2">
+                      Selecionado:{' '}
+                      <span className="text-white">{marbles.find((m) => m.id === draft.marbleId)?.name ?? '—'}</span>
+                      {isOnRequest(marbles.find((m) => m.id === draft.marbleId)) && (
+                        <span className="text-marble-gold"> · mármore sob consulta (o valor será informado pela nossa equipe)</span>
+                      )}
+                    </p>
+                  )}
+                  {marblesLoading && <p className="text-xs text-white/40 py-3">Carregando mármores...</p>}
+                  {!marblesLoading && filteredMarbles.length === 0 && (
+                    <p className="text-xs text-white/50 py-3">Nenhum mármore encontrado com “{marbleSearch}”.</p>
+                  )}
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1">
-                    {marbles.map((m) => (
+                    {filteredMarbles.map((m) => (
                       <button
                         key={m.id}
                         onClick={() => setDraft((d) => ({ ...d, marbleId: m.id }))}
@@ -545,7 +630,10 @@ export function QuoteForm() {
                         ) : (
                           <div className="w-full h-full bg-marble-gray" />
                         )}
-                        <div className="absolute inset-0 bg-black/40 flex items-end p-1">
+                        <div className="absolute inset-0 bg-black/40 flex flex-col justify-end p-1">
+                          {m.pricePerM2 == null && (
+                            <span className="text-[9px] leading-tight text-marble-gold">Sob consulta</span>
+                          )}
                           <p className="text-[10px] leading-tight font-medium">{m.name}</p>
                         </div>
                       </button>
@@ -677,8 +765,13 @@ export function QuoteForm() {
               {pieces.length > 0 && (
                 <div className="glass-panel p-4 mt-4 flex items-center justify-between">
                   <span className="text-sm text-white/60">Total estimado ({pieces.length} peça{pieces.length > 1 ? 's' : ''})</span>
-                  <span className="text-xl font-bold text-marble-gold">{formatCurrency(grandTotal)}</span>
+                  <span className="text-xl font-bold text-marble-gold">{hasOnRequest ? 'Sob consulta' : formatCurrency(grandTotal)}</span>
                 </div>
+              )}
+              {pieces.length > 0 && hasOnRequest && (
+                <p className="text-xs text-white/50 mt-2">
+                  Seu orçamento tem mármore sob consulta — nossa equipe retorna com o valor final.
+                </p>
               )}
             </div>
           )}
@@ -708,12 +801,14 @@ export function QuoteForm() {
               <Check className="mx-auto text-marble-gold mb-4" size={48} />
               <h2 className="text-2xl font-bold mb-2">Orçamento gerado!</h2>
               <p className="text-white/60 mb-8">
-                {piecesTotal > 0 ? `Valor estimado: ${formatCurrency(grandTotal)}` : 'Nossa equipe vai retornar com os valores em breve.'}
+                {!hasOnRequest && piecesTotal > 0
+                  ? `Valor estimado: ${formatCurrency(grandTotal)}`
+                  : 'Nossa equipe vai retornar com os valores em breve.'}
               </p>
               {priceOnRequestNames.length > 0 && (
-                <p className="text-sm text-red-300 border border-red-400/40 bg-red-500/10 rounded-lg p-3 mb-8 -mt-4">
-                  Valor incompleto: o preço de {priceOnRequestNames.join(', ')} é sob consulta e não está incluído. Nossa
-                  equipe vai retornar com o valor final.
+                <p className="text-sm text-marble-gold border border-marble-gold/40 bg-marble-gold/10 rounded-lg p-3 mb-8 -mt-4">
+                  {priceOnRequestNames.join(', ')} {priceOnRequestNames.length > 1 ? 'são mármores' : 'é mármore'} sob
+                  consulta. Nossa equipe vai retornar com o valor final.
                 </p>
               )}
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -738,11 +833,12 @@ export function QuoteForm() {
       {confirmPriceOnRequestOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" role="dialog" aria-modal="true">
           <div className="glass-panel bg-marble-dark max-w-md w-full p-6 space-y-4">
-            <h3 className="text-lg font-bold text-white">Material com preço sob consulta</h3>
+            <h3 className="text-lg font-bold text-white">Mármore sob consulta</h3>
             <p className="text-sm text-white/70">
-              O preço de <span className="text-white font-medium">{priceOnRequestNames.join(', ')}</span> é sob consulta
-              e <strong className="text-white">não será incluído</strong> no valor. O orçamento e o PDF sairão com um
-              valor bem abaixo do real, marcados como incompletos, e nossa equipe retornará com o valor final.
+              <span className="text-white font-medium">{priceOnRequestNames.join(', ')}</span>{' '}
+              {priceOnRequestNames.length > 1 ? 'são mármores' : 'é mármore'} sob consulta. O orçamento e o PDF sairão
+              sem valor, marcados como <strong className="text-white">sob consulta</strong>, e nossa equipe retornará
+              com o valor final.
             </p>
             <p className="text-sm text-white/70">Deseja criar o orçamento mesmo assim?</p>
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
