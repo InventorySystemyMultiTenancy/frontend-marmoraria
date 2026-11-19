@@ -121,6 +121,11 @@ export function QuoteForm() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [cpfCnpj, setCpfCnpj] = useState('');
+  // Condições comerciais (as mesmas do admin) — saem no PDF se preenchidas.
+  const [paymentConditions, setPaymentConditions] = useState('');
+  const [paymentTerm, setPaymentTerm] = useState('');
+  const [deliveryTerm, setDeliveryTerm] = useState('');
+  const [notes, setNotes] = useState('');
   const [quoteId, setQuoteId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -334,6 +339,10 @@ export function QuoteForm() {
         })),
         freight,
         freightDistanceKm: distanceKm ? Number(distanceKm) : undefined,
+        paymentConditions: paymentConditions.trim() || undefined,
+        paymentTerm: paymentTerm.trim() || undefined,
+        deliveryTerm: deliveryTerm.trim() || undefined,
+        notes: notes.trim() || undefined,
       });
       return data.quote;
     },
@@ -792,6 +801,42 @@ export function QuoteForm() {
                   Usado para você rastrear o pedido depois. Se não informar agora, pode ser solicitado na aprovação do orçamento.
                 </p>
                 <Field label="Email (opcional)" value={email} onChange={setEmail} />
+              </div>
+
+              <div className="glass-panel p-4 mt-6 space-y-4">
+                <div>
+                  <p className="text-sm font-semibold text-white">Condições do orçamento (opcional)</p>
+                  <p className="text-xs text-white/40 mt-0.5">Cada campo preenchido aparece no PDF do orçamento.</p>
+                </div>
+                <Field
+                  label="Forma de pagamento"
+                  value={paymentConditions}
+                  onChange={setPaymentConditions}
+                  placeholder="Ex: Pix, cartão em até 3x, boleto"
+                />
+                <Field
+                  label="Condições de pagamento"
+                  value={paymentTerm}
+                  onChange={setPaymentTerm}
+                  placeholder="Ex: 50% de entrada, 50% na entrega"
+                />
+                <Field
+                  label="Prazo de entrega"
+                  value={deliveryTerm}
+                  onChange={setDeliveryTerm}
+                  placeholder="Ex: 15 dias úteis"
+                />
+                <div>
+                  <label className="text-sm text-white/60 mb-1 block">Detalhes / observações</label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={3}
+                    maxLength={1000}
+                    placeholder="Informações adicionais para o cliente"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-marble-gold resize-y"
+                  />
+                </div>
               </div>
             </div>
           )}
