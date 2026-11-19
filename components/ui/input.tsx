@@ -33,12 +33,19 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTML
 );
 Textarea.displayName = 'Textarea';
 
+// Seta desenhada (em vez da nativa) para o campo sempre parecer um seletor.
+const SELECT_CHEVRON =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a6834b' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")";
+
 export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(
-  ({ className, ...props }, ref) => (
+  ({ className, style, ...props }, ref) => (
     <select
       ref={ref}
+      // Fundo e texto opacos + esquema claro forçado: a lista de opções nativa
+      // não pode herdar o modo escuro do sistema/navegador (texto branco em fundo branco).
+      style={{ colorScheme: 'light', backgroundImage: SELECT_CHEVRON, ...style }}
       className={cn(
-        'flex h-10 w-full rounded-xl border border-[var(--line)] bg-white/90 px-3 py-2 text-sm text-ink shadow-[inset_0_1px_2px_rgba(26,22,20,0.04)] transition-[border-color,box-shadow] duration-200 hover:border-marble-gold/40 focus:outline-none focus:border-marble-gold focus:ring-4 focus:ring-marble-gold/15 disabled:opacity-50',
+        'flex h-10 w-full cursor-pointer appearance-none rounded-xl border border-gray-300 bg-white bg-[length:16px_16px] bg-[position:right_0.75rem_center] bg-no-repeat py-2 pl-3 pr-9 text-sm text-ink shadow-[inset_0_1px_2px_rgba(26,22,20,0.04)] transition-[border-color,box-shadow] duration-200 hover:border-marble-gold/60 focus:outline-none focus:border-marble-gold focus:ring-4 focus:ring-marble-gold/15 disabled:opacity-50 [&>option]:bg-white [&>option]:text-ink',
         className
       )}
       {...props}

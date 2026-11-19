@@ -489,7 +489,7 @@ export function QuoteBuilder() {
               <Input value={paymentTerm} onChange={(e) => setPaymentTerm(e.target.value)} placeholder="Ex: 50% na aprovação, 50% na entrega" />
             </div>
             <div>
-              <Label>Prazo para ficar pronto</Label>
+              <Label>Prazo de entrega</Label>
               <Input value={deliveryTerm} onChange={(e) => setDeliveryTerm(e.target.value)} placeholder="Ex: 15 dias úteis após aprovação" />
             </div>
           </div>

@@ -270,7 +270,7 @@ export default function CatalogoAdminPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <Label>Tipo</Label>
+              <Label>Categoria</Label>
               <Select {...register('type')}>
                 {Object.entries(MARBLE_TYPE_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>

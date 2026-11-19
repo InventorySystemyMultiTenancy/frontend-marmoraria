@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission } from '@/lib/permissions';
+import { DeleteRecordButton } from '@/components/admin/DeleteRecordButton';
 import { QuoteItemEditDialog } from '@/components/admin/QuoteItemEditDialog';
 import { Slab3D } from '@/components/ui/Slab3D';
 import { ShowExtrasToggle } from '@/components/admin/ShowExtrasToggle';
@@ -153,6 +154,23 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
           <a href={`/api/pdf/quote/${data.id}`} target="_blank" rel="noreferrer">
             <Button variant="outline" size="sm"><Download size={14} /> PDF</Button>
           </a>
+          {hasPermission(user, 'quotes_delete') && (
+            <DeleteRecordButton
+              endpoint={`/quotes/${data.id}`}
+              redirectTo="/admin/orcamentos"
+              title={`Excluir o orçamento ${data.quoteNumber}?`}
+              description={
+                data.order ? (
+                  <p>
+                    Este orçamento já virou o pedido {data.order.orderNumber}. O pedido, as etapas de produção e a
+                    receita lançada no financeiro também serão apagados.
+                  </p>
+                ) : (
+                  <p>O orçamento e todos os itens dele serão apagados.</p>
+                )
+              }
+            />
+          )}
         </div>
       </div>
 
@@ -334,7 +352,7 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
             {data.projectName && <p><strong>Projeto:</strong> {data.projectName}</p>}
             {data.paymentConditions && <p><strong>Forma de pagamento:</strong> {data.paymentConditions}</p>}
             {data.paymentTerm && <p><strong>Condições de pagamento:</strong> {data.paymentTerm}</p>}
-            {data.deliveryTerm && <p><strong>Prazo para ficar pronto:</strong> {data.deliveryTerm}</p>}
+            {data.deliveryTerm && <p><strong>Prazo de entrega:</strong> {data.deliveryTerm}</p>}
             {data.notes && <p><strong>Observações:</strong> {data.notes}</p>}
             {!data.paymentConditions && !data.paymentTerm && !data.deliveryTerm && !data.notes && (
               <p className="text-gray-400">Nenhuma condição de pagamento ou detalhe informado.</p>

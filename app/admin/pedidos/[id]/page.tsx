@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission } from '@/lib/permissions';
+import { DeleteRecordButton } from '@/components/admin/DeleteRecordButton';
 
 const ALL_STATUSES: OrderStatus[] = [
   'PENDING',
@@ -220,6 +221,19 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
                 <option key={s} value={s}>{ORDER_STATUS_LABELS[s]}</option>
               ))}
             </Select>
+          )}
+          {hasPermission(user, 'quotes_delete') && (
+            <DeleteRecordButton
+              endpoint={`/orders/${data.id}`}
+              redirectTo="/admin/pedidos"
+              title={`Excluir o pedido ${data.orderNumber}?`}
+              description={
+                <p>
+                  O pedido será apagado junto com o orçamento {quote?.quoteNumber ?? ''} que o gerou, as etapas de
+                  produção e a receita lançada no financeiro.
+                </p>
+              }
+            />
           )}
         </div>
       </div>
@@ -441,7 +455,7 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
               {quote.projectName && <p><strong>Projeto:</strong> {quote.projectName}</p>}
               <p><strong>Forma de pagamento:</strong> {quote.paymentConditions || '-'}</p>
               <p><strong>Condições de pagamento:</strong> {quote.paymentTerm || '-'}</p>
-              {quote.deliveryTerm && <p><strong>Prazo para ficar pronto:</strong> {quote.deliveryTerm}</p>}
+              {quote.deliveryTerm && <p><strong>Prazo de entrega:</strong> {quote.deliveryTerm}</p>}
               {quote.notes && <p><strong>Observações:</strong> {quote.notes}</p>}
               <p className="text-xs text-gray-400 pt-1">Essas informações aparecem no PDF do pedido.</p>
             </CardContent>

@@ -79,7 +79,7 @@ export function QuoteConditionsDialog({
           />
         </div>
         <div>
-          <Label>Prazo para ficar pronto</Label>
+          <Label>Prazo de entrega</Label>
           <Input
             value={form.deliveryTerm}
             onChange={(e) => setForm((f) => ({ ...f, deliveryTerm: e.target.value }))}
