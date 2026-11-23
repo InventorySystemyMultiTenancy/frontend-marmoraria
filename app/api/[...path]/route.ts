@@ -22,6 +22,12 @@ async function proxy(req: NextRequest, segments: string[]) {
     body: hasBody ? await req.arrayBuffer() : undefined,
   });
 
+  // 204/304 não podem ter corpo — recriar a resposta com corpo (mesmo vazio)
+  // lança erro e o navegador recebia 500 mesmo com a operação concluída.
+  if (backendRes.status === 204 || backendRes.status === 304) {
+    return new NextResponse(null, { status: backendRes.status });
+  }
+
   const resContentType = backendRes.headers.get('content-type') ?? '';
 
   if (resContentType.includes('application/json')) {

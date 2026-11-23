@@ -12,6 +12,8 @@ import { Company, Marble, SiteSession } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import { calcPieceBreakdown } from '@/lib/pricing';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
+import { useQuoteDraft } from '@/lib/useQuoteDraft';
+import { DraftResumePrompt, DraftToolbar } from '@/components/QuoteDraftControls';
 
 const STEPS = ['Foto (opcional)', 'Peças', 'Seus dados', 'Resultado'];
 const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
@@ -64,6 +66,24 @@ const emptyDraft: PieceDraft = {
 
 interface PreviewResult {
   result: number;
+}
+
+// Estado do formulário guardado no rascunho (sem foto/IA, que não fazem sentido
+// salvar). A etapa "Resultado" nunca é salva.
+interface SiteDraftForm {
+  step: number;
+  pieces: Piece[];
+  draft: PieceDraft;
+  editingKey: string | null;
+  distanceKm: string;
+  name: string;
+  phone: string;
+  email: string;
+  cpfCnpj: string;
+  paymentConditions: string;
+  paymentTerm: string;
+  deliveryTerm: string;
+  notes: string;
 }
 
 // preview vem da fórmula ativa de verdade (POST /formula/preview/public) — a
@@ -235,6 +255,52 @@ export function QuoteForm({ session }: { session: SiteSession }) {
   );
   const [confirmPriceOnRequestOpen, setConfirmPriceOnRequestOpen] = useState(false);
 
+  // Rascunho salvo no login: continua de onde parou ao voltar ao site.
+  const draftForm: SiteDraftForm = {
+    step: Math.min(step, 2),
+    pieces,
+    draft,
+    editingKey,
+    distanceKm,
+    name,
+    phone,
+    email,
+    cpfCnpj,
+    paymentConditions,
+    paymentTerm,
+    deliveryTerm,
+    notes,
+  };
+  const draftIsEmpty = pieces.length === 0;
+  const quoteDraft = useQuoteDraft<SiteDraftForm>({
+    context: 'SITE',
+    ownerKey: `${session.kind}:${session.email}`,
+    form: draftForm,
+    isEmpty: draftIsEmpty,
+    summary: {
+      itemCount: pieces.length,
+      estimatedTotal: hasOnRequest || piecesTotal <= 0 ? null : grandTotal,
+      clientLabel: name.trim() || null,
+    },
+    enabled: step < 3,
+    onRestore: (f) => {
+      setPieces(f.pieces ?? []);
+      setDraft(f.draft ?? { ...emptyDraft });
+      setEditingKey(f.editingKey ?? null);
+      setDistanceKm(f.distanceKm ?? '');
+      setName(f.name ?? '');
+      setPhone(f.phone ?? '');
+      setEmail(f.email ?? '');
+      setCpfCnpj(f.cpfCnpj ?? '');
+      setPaymentConditions(f.paymentConditions ?? '');
+      setPaymentTerm(f.paymentTerm ?? '');
+      setDeliveryTerm(f.deliveryTerm ?? '');
+      setNotes(f.notes ?? '');
+      setStep(Math.min(Math.max(f.step ?? 1, 1), 2));
+      setError(null);
+    },
+  });
+
   const aiMutation = useMutation({
     mutationFn: async () => {
       if (!photoFile) throw new Error('no-file');
@@ -355,6 +421,8 @@ export function QuoteForm({ session }: { session: SiteSession }) {
     onSuccess: (quote) => {
       setQuoteId(quote.id);
       setStep(3);
+      // Orçamento criado: o rascunho deixa de existir.
+      void quoteDraft.finish();
     },
     onError: () => setError('Não foi possível gerar o orçamento. Tente novamente.'),
   });
@@ -411,6 +479,18 @@ export function QuoteForm({ session }: { session: SiteSession }) {
           </button>
         </span>
       </div>
+
+      <DraftResumePrompt draft={quoteDraft} theme="dark" />
+      {step < 3 && (
+        <DraftToolbar
+          draft={quoteDraft}
+          context="SITE"
+          theme="dark"
+          isEmpty={draftIsEmpty}
+          defaultName={`Orçamento de ${new Date().toLocaleDateString('pt-BR')}`}
+          className="mb-8"
+        />
+      )}
 
       <div className="flex items-center justify-between mb-10">
         {STEPS.map((label, i) => (

@@ -12,6 +12,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 import { calcPieceBreakdown } from '@/lib/pricing';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
+import { useQuoteDraft } from '@/lib/useQuoteDraft';
+import { useAuthStore } from '@/store/authStore';
+import { DraftResumePrompt, DraftToolbar } from '@/components/QuoteDraftControls';
 
 interface ExtraInput {
   name: string;
@@ -49,6 +52,29 @@ const emptyItem: BuilderItem = {
   includeAcabamento: false,
   includeInstalacao: false,
 };
+
+// Tudo o que o rascunho guarda do montador.
+interface AdminDraftForm {
+  useExistingClient: boolean;
+  clientId: string;
+  clientName: string;
+  clientPhone: string;
+  clientEmail: string;
+  clientCpfCnpj: string;
+  discount: string;
+  discountPct: string;
+  deliveryAddress: string;
+  freightDistanceKm: string;
+  freightRatePerKm: string;
+  freightManual: string;
+  notes: string;
+  showExtras: boolean;
+  projectName: string;
+  paymentConditions: string;
+  paymentTerm: string;
+  deliveryTerm: string;
+  items: BuilderItem[];
+}
 
 export function QuoteBuilder() {
   const router = useRouter();
@@ -192,6 +218,68 @@ export function QuoteBuilder() {
     subtotal - Number(discount || 0) - (subtotal * Number(discountPct || 0)) / 100 + computedFreight
   );
 
+  // Rascunho salvo no login do funcionário: continua de onde parou.
+  const user = useAuthStore((s) => s.user);
+  const draftForm: AdminDraftForm = {
+    useExistingClient,
+    clientId,
+    clientName,
+    clientPhone,
+    clientEmail,
+    clientCpfCnpj,
+    discount,
+    discountPct,
+    deliveryAddress,
+    freightDistanceKm,
+    freightRatePerKm,
+    freightManual,
+    notes,
+    showExtras,
+    projectName,
+    paymentConditions,
+    paymentTerm,
+    deliveryTerm,
+    items,
+  };
+  const filledItems = items.filter((i) => i.marbleId || i.widthCm || i.heightCm);
+  const draftIsEmpty = filledItems.length === 0 && !clientId && !clientName.trim() && !projectName.trim();
+  const draftClientLabel = useExistingClient
+    ? clientsData?.clients.find((c) => c.id === clientId)?.name ?? null
+    : clientName.trim() || null;
+  const quoteDraft = useQuoteDraft<AdminDraftForm>({
+    context: 'ADMIN',
+    ownerKey: user?.id ?? null,
+    form: draftForm,
+    isEmpty: draftIsEmpty,
+    summary: {
+      itemCount: filledItems.length,
+      estimatedTotal: total > 0 ? total : null,
+      clientLabel: [draftClientLabel, projectName.trim()].filter(Boolean).join(' — ') || null,
+    },
+    onRestore: (f) => {
+      setUseExistingClient(f.useExistingClient ?? true);
+      setClientId(f.clientId ?? '');
+      setClientName(f.clientName ?? '');
+      setClientPhone(f.clientPhone ?? '');
+      setClientEmail(f.clientEmail ?? '');
+      setClientCpfCnpj(f.clientCpfCnpj ?? '');
+      setDiscount(f.discount ?? '0');
+      setDiscountPct(f.discountPct ?? '0');
+      setDeliveryAddress(f.deliveryAddress ?? '');
+      setFreightDistanceKm(f.freightDistanceKm ?? '');
+      setFreightRatePerKm(f.freightRatePerKm ?? '');
+      setFreightManual(f.freightManual ?? '');
+      setNotes(f.notes ?? '');
+      setShowExtras(Boolean(f.showExtras));
+      setProjectName(f.projectName ?? '');
+      setPaymentConditions(f.paymentConditions ?? '');
+      setPaymentTerm(f.paymentTerm ?? '');
+      setDeliveryTerm(f.deliveryTerm ?? '');
+      setItems(f.items?.length ? f.items : [{ ...emptyItem }]);
+      setError(null);
+    },
+  });
+
   const createMutation = useMutation({
     mutationFn: async () => {
       const payload = {
@@ -229,7 +317,11 @@ export function QuoteBuilder() {
       const { data } = await api.post('/quotes', payload);
       return data.quote;
     },
-    onSuccess: (quote) => router.push(`/admin/orcamentos/${quote.id}`),
+    onSuccess: async (quote) => {
+      // Orçamento criado: o rascunho (em andamento e o salvo, se veio de um) some.
+      await quoteDraft.finish();
+      router.push(`/admin/orcamentos/${quote.id}`);
+    },
     onError: () => setError('Não foi possível salvar o orçamento. Verifique os campos.'),
   });
 
@@ -266,6 +358,18 @@ export function QuoteBuilder() {
 
   return (
     <div className="space-y-6">
+      <DraftResumePrompt draft={quoteDraft} theme="light" />
+      <DraftToolbar
+        draft={quoteDraft}
+        context="ADMIN"
+        theme="light"
+        isEmpty={draftIsEmpty}
+        defaultName={
+          projectName.trim() ||
+          (draftClientLabel ? `Orçamento — ${draftClientLabel}` : `Orçamento de ${new Date().toLocaleDateString('pt-BR')}`)
+        }
+      />
+
       <Card>
         <CardHeader><CardTitle>Cliente</CardTitle></CardHeader>
         <CardContent className="space-y-3">
