@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from './api';
-import { User } from '@/types';
+import { SiteSession, User } from '@/types';
 
 export async function fetchMe(): Promise<User | null> {
   try {
@@ -27,4 +27,10 @@ export async function login(email: string, password: string) {
 
 export async function logout() {
   await api.post('/auth/logout');
+}
+
+// Login do site (orçamentos) — aceita cliente ou funcionário/admin.
+export async function siteLogin(email: string, password: string) {
+  const { data } = await api.post('/auth/site-login', { email, password });
+  return data.session as SiteSession;
 }

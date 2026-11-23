@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { SESSION_COOKIE, sessionCookieOptions } from '@/lib/session';
 
 const BACKEND_URL = process.env.BACKEND_URL;
 
+// Login do painel administrativo (só funcionários).
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
@@ -19,13 +21,7 @@ export async function POST(req: NextRequest) {
   }
 
   const cookieStore = await cookies();
-  cookieStore.set('token', data.token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    path: '/',
-    maxAge: 7 * 24 * 60 * 60,
-  });
+  cookieStore.set(SESSION_COOKIE, data.token, sessionCookieOptions);
 
   return NextResponse.json({ user: data.user });
 }

@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, KeyRound } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Client } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,8 @@ import { DataTable } from '@/components/admin/DataTable';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission } from '@/lib/permissions';
 import { PageHeader } from '@/components/admin/PageHeader';
+import { ClientLoginDialog } from '@/components/admin/ClientLoginDialog';
+import { Badge } from '@/components/ui/badge';
 
 const schema = z.object({
   name: z.string().min(2, 'Nome obrigatório'),
@@ -33,6 +35,7 @@ export default function ClientesPage() {
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<Client | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [loginClient, setLoginClient] = useState<Client | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['clients', search],
@@ -94,7 +97,7 @@ export default function ClientesPage() {
         eyebrow="Comercial"
         icon={Users}
         title="Clientes"
-        description="Cadastro de clientes usado nos orçamentos e pedidos."
+        description="Cadastro de clientes usado nos orçamentos e pedidos. Use a chave para criar o login do cliente fazer orçamentos pelo site."
         actions={
           canCreate && (
             <Button onClick={openCreate}>
@@ -121,10 +124,31 @@ export default function ClientesPage() {
           { header: 'Email', cell: (c) => c.email ?? '-' },
           { header: 'Cidade/UF', cell: (c) => (c.city ? `${c.city}/${c.state ?? ''}` : '-') },
           {
+            header: 'Acesso ao site',
+            cell: (c) =>
+              c.login ? (
+                <Badge variant="success" title={c.login.email}>
+                  <KeyRound size={12} /> {c.login.email}
+                </Badge>
+              ) : (
+                <span className="text-xs text-marble-gray">Sem login</span>
+              ),
+          },
+          {
             header: '',
             className: 'text-right',
             cell: (c) => (
               <div className="flex justify-end gap-2">
+                {canEdit && (
+                  <button
+                    onClick={() => setLoginClient(c)}
+                    className="text-gray-500 hover:text-marble-gold cursor-pointer"
+                    title={c.login ? 'Editar acesso ao site' : 'Criar login para orçamentos no site'}
+                    aria-label={c.login ? 'Editar acesso ao site' : 'Criar login para orçamentos no site'}
+                  >
+                    <KeyRound size={16} />
+                  </button>
+                )}
                 {canEdit && (
                   <button onClick={() => openEdit(c)} className="text-gray-500 hover:text-marble-gold cursor-pointer">
                     <Pencil size={16} />
@@ -143,6 +167,8 @@ export default function ClientesPage() {
           },
         ]}
       />
+
+      <ClientLoginDialog client={loginClient} onClose={() => setLoginClient(null)} />
 
       <Dialog open={showForm} onClose={closeForm}>
         <h2 className="text-lg font-semibold text-marble-dark mb-4">

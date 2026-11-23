@@ -5,9 +5,10 @@ import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useQuery, useQueries, useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Camera, Sparkles, X, Plus, Trash2, Pencil, Search } from 'lucide-react';
-import { publicApi } from '@/lib/api';
-import { Company, Marble } from '@/types';
+import { Check, Camera, Sparkles, X, Plus, Trash2, Pencil, Search, LogOut, UserRound } from 'lucide-react';
+import { api, publicApi } from '@/lib/api';
+import { logout } from '@/lib/auth';
+import { Company, Marble, SiteSession } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import { calcPieceBreakdown } from '@/lib/pricing';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
@@ -106,7 +107,7 @@ function normalize(text: string) {
     .trim();
 }
 
-export function QuoteForm() {
+export function QuoteForm({ session }: { session: SiteSession }) {
   const searchParams = useSearchParams();
   const preselected = searchParams.get('marbleId');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -117,10 +118,14 @@ export function QuoteForm() {
   const [draft, setDraft] = useState<PieceDraft>({ ...emptyDraft, marbleId: preselected ?? '' });
   const [distanceKm, setDistanceKm] = useState('');
 
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [cpfCnpj, setCpfCnpj] = useState('');
+  // Cliente logado: já vem com os dados do cadastro dele (pode editar). Admin
+  // orçando pelo site começa com os campos em branco (é para outra pessoa).
+  const isClient = session.kind === 'client';
+  const [name, setName] = useState(isClient ? session.name : '');
+  const [phone, setPhone] = useState(isClient ? session.phone ?? '' : '');
+  const [email, setEmail] = useState(isClient ? session.contactEmail ?? '' : '');
+  const [cpfCnpj, setCpfCnpj] = useState(isClient ? session.cpfCnpj ?? '' : '');
+  const [loggingOut, setLoggingOut] = useState(false);
   // Condições comerciais (as mesmas do admin) — saem no PDF se preenchidas.
   const [paymentConditions, setPaymentConditions] = useState('');
   const [paymentTerm, setPaymentTerm] = useState('');
@@ -320,7 +325,8 @@ export function QuoteForm() {
 
   const submitMutation = useMutation({
     mutationFn: async () => {
-      const { data } = await publicApi.post('/api/quotes/public', {
+      // Vai pelo proxy do Next (/api) para levar o cookie de login.
+      const { data } = await api.post('/quotes/public', {
         clientName: name,
         clientPhone: phone,
         clientEmail: email || undefined,
@@ -372,8 +378,40 @@ export function QuoteForm() {
     setStep((s) => s + 1);
   }
 
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      window.location.href = '/entrar';
+    }
+  }
+
   return (
     <div className="max-w-2xl mx-auto">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-8 text-sm text-white/60">
+        <span className="flex items-center gap-2 min-w-0">
+          <UserRound size={16} className="text-marble-gold shrink-0" />
+          <span className="truncate">
+            Conectado como <span className="text-white">{session.name}</span>
+          </span>
+        </span>
+        <span className="flex items-center gap-4">
+          {!isClient && (
+            <a href="/admin/dashboard" className="hover:text-marble-gold transition-colors">
+              Painel admin
+            </a>
+          )}
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="flex items-center gap-1.5 hover:text-marble-gold transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <LogOut size={14} /> Sair
+          </button>
+        </span>
+      </div>
+
       <div className="flex items-center justify-between mb-10">
         {STEPS.map((label, i) => (
           <div key={label} className="flex-1 flex items-center">

@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { isAxiosError } from 'axios';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQueryClient } from '@tanstack/react-query';
-import { login } from '@/lib/auth';
+import { fetchMe, login } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/input';
 
@@ -30,6 +31,19 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
+  // Sessão salva no navegador: quem já está logado vai direto para o painel.
+  useEffect(() => {
+    let active = true;
+    fetchMe().then((user) => {
+      if (!active || !user) return;
+      queryClient.setQueryData(['me'], user);
+      router.replace('/admin/dashboard');
+    });
+    return () => {
+      active = false;
+    };
+  }, [queryClient, router]);
+
   async function onSubmit(values: FormValues) {
     setError(null);
     setIsSubmitting(true);
@@ -37,8 +51,13 @@ export default function LoginPage() {
       const user = await login(values.email, values.password);
       queryClient.setQueryData(['me'], user);
       router.push('/admin/dashboard');
-    } catch {
-      setError('Email ou senha inválidos.');
+    } catch (err) {
+      // 403 = login de cliente (só serve para orçamento no site).
+      if (isAxiosError(err) && err.response?.status === 403) {
+        setError(err.response.data?.error ?? 'Este login não tem acesso ao painel administrativo.');
+      } else {
+        setError('Email ou senha inválidos.');
+      }
     } finally {
       setIsSubmitting(false);
     }

@@ -12,15 +12,18 @@ export const publicApi = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
 });
 
+// Sessão expirada: no painel volta para o login do admin; no site, para o login
+// de clientes (voltando depois para a página em que estava).
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    if (
-      typeof window !== 'undefined' &&
-      error?.response?.status === 401 &&
-      window.location.pathname !== '/admin/login'
-    ) {
-      window.location.href = '/admin/login';
+    if (typeof window !== 'undefined' && error?.response?.status === 401) {
+      const { pathname, search } = window.location;
+      if (pathname.startsWith('/admin')) {
+        if (pathname !== '/admin/login') window.location.href = '/admin/login';
+      } else if (pathname !== '/entrar') {
+        window.location.href = `/entrar?next=${encodeURIComponent(pathname + search)}`;
+      }
     }
     return Promise.reject(error);
   }

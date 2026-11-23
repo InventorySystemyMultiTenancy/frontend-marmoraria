@@ -95,6 +95,26 @@ export interface User {
   createdAt?: string;
 }
 
+// Sessão do site público (orçamento): funcionário/admin ou cliente com login.
+export interface SiteSession {
+  kind: 'user' | 'client';
+  name: string;
+  email: string;
+  role?: UserRole;
+  clientId?: string;
+  // Só para clientes: dados do cadastro, usados para pré-preencher o orçamento.
+  phone?: string | null;
+  contactEmail?: string | null;
+  cpfCnpj?: string | null;
+}
+
+// Acesso do cliente ao site, como o admin vê (sem senha).
+export interface ClientLoginInfo {
+  email: string;
+  lastLoginAt: string | null;
+  createdAt: string;
+}
+
 export type MarbleType =
   | 'MARBLE'
   | 'GRANITE'
@@ -159,6 +179,8 @@ export interface Client {
   notes?: string | null;
   createdAt?: string;
   quotes?: Quote[];
+  // Login do cliente no site (só para orçamentos); null = sem acesso.
+  login?: ClientLoginInfo | null;
 }
 
 export type QuoteStatus = 'DRAFT' | 'SENT' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'CANCELLED';
