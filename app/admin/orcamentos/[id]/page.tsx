@@ -18,6 +18,7 @@ import { DeleteRecordButton } from '@/components/admin/DeleteRecordButton';
 import { QuoteItemEditDialog } from '@/components/admin/QuoteItemEditDialog';
 import { Slab3D } from '@/components/ui/Slab3D';
 import { ShowExtrasToggle } from '@/components/admin/ShowExtrasToggle';
+import { HideTotalToggle } from '@/components/admin/HideTotalToggle';
 import { QuoteFreightDialog } from '@/components/admin/QuoteFreightDialog';
 import { QuoteConditionsDialog } from '@/components/admin/QuoteConditionsDialog';
 import { QuoteClientDialog } from '@/components/admin/QuoteClientDialog';
@@ -326,11 +327,23 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
               <span>{formatCurrency(data.freight)}</span>
             </div>
           )}
-          <div className="flex justify-between text-lg font-bold text-marble-dark pt-2 border-t border-gray-100"><span>Total</span><span>{formatCurrency(data.total)}</span></div>
-          <div className="pt-3 mt-2 border-t border-gray-100">
+          <div className="flex justify-between text-lg font-bold text-marble-dark pt-2 border-t border-gray-100">
+            <span>
+              Total
+              {data.hideTotal && <span className="ml-2 text-xs font-normal text-gray-400">(oculto no PDF e para o cliente)</span>}
+            </span>
+            <span>{formatCurrency(data.total)}</span>
+          </div>
+          <div className="pt-3 mt-2 border-t border-gray-100 space-y-3">
             <ShowExtrasToggle
               quoteId={id}
               checked={Boolean(data.showExtras)}
+              disabled={!canEditDiscount}
+              onSaved={() => queryClient.invalidateQueries({ queryKey: ['quote', id] })}
+            />
+            <HideTotalToggle
+              quoteId={id}
+              checked={Boolean(data.hideTotal)}
               disabled={!canEditDiscount}
               onSaved={() => queryClient.invalidateQueries({ queryKey: ['quote', id] })}
             />

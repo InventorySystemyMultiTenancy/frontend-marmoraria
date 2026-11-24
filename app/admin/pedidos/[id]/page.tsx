@@ -12,6 +12,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { QuoteItemEditDialog } from '@/components/admin/QuoteItemEditDialog';
 import { Slab3D } from '@/components/ui/Slab3D';
 import { ShowExtrasToggle } from '@/components/admin/ShowExtrasToggle';
+import { HideTotalToggle } from '@/components/admin/HideTotalToggle';
 import { QuoteFreightDialog } from '@/components/admin/QuoteFreightDialog';
 import { QuoteConditionsDialog } from '@/components/admin/QuoteConditionsDialog';
 import { QuoteClientDialog } from '@/components/admin/QuoteClientDialog';
@@ -384,14 +385,25 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
                 </div>
               )}
               <div className="flex justify-between text-lg font-bold text-marble-dark pt-2 border-t border-gray-100">
-                <span>Total</span>
+                <span>
+                  Total
+                  {quote.hideTotal && (
+                    <span className="ml-2 text-xs font-normal text-gray-400">(oculto no PDF e para o cliente)</span>
+                  )}
+                </span>
                 <span>{formatCurrency(quote.total)}</span>
               </div>
 
-              <div className="pt-3 mt-2 border-t border-gray-100">
+              <div className="pt-3 mt-2 border-t border-gray-100 space-y-3">
                 <ShowExtrasToggle
                   quoteId={quote.id}
                   checked={Boolean(quote.showExtras)}
+                  disabled={!canEditQuote}
+                  onSaved={refreshOrder}
+                />
+                <HideTotalToggle
+                  quoteId={quote.id}
+                  checked={Boolean(quote.hideTotal)}
                   disabled={!canEditQuote}
                   onSaved={refreshOrder}
                 />

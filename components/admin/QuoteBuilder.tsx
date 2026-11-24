@@ -15,6 +15,7 @@ import { useDebouncedValue } from '@/lib/useDebouncedValue';
 import { useQuoteDraft } from '@/lib/useQuoteDraft';
 import { useAuthStore } from '@/store/authStore';
 import { DraftResumePrompt, DraftToolbar } from '@/components/QuoteDraftControls';
+import { HideTotalButton } from '@/components/admin/HideTotalToggle';
 
 interface ExtraInput {
   name: string;
@@ -69,6 +70,7 @@ interface AdminDraftForm {
   freightManual: string;
   notes: string;
   showExtras: boolean;
+  hideTotal?: boolean;
   projectName: string;
   paymentConditions: string;
   paymentTerm: string;
@@ -92,6 +94,8 @@ export function QuoteBuilder() {
   const [freightManual, setFreightManual] = useState('');
   const [notes, setNotes] = useState('');
   const [showExtras, setShowExtras] = useState(false);
+  // Pedido do lojista: PDF/acompanhamento sem a soma, só valores por item.
+  const [hideTotal, setHideTotal] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [paymentConditions, setPaymentConditions] = useState('');
   const [paymentTerm, setPaymentTerm] = useState('');
@@ -235,6 +239,7 @@ export function QuoteBuilder() {
     freightManual,
     notes,
     showExtras,
+    hideTotal,
     projectName,
     paymentConditions,
     paymentTerm,
@@ -271,6 +276,7 @@ export function QuoteBuilder() {
       setFreightManual(f.freightManual ?? '');
       setNotes(f.notes ?? '');
       setShowExtras(Boolean(f.showExtras));
+      setHideTotal(Boolean(f.hideTotal));
       setProjectName(f.projectName ?? '');
       setPaymentConditions(f.paymentConditions ?? '');
       setPaymentTerm(f.paymentTerm ?? '');
@@ -308,6 +314,7 @@ export function QuoteBuilder() {
         freightRatePerKm: freightDistanceKm && freightRatePerKm ? Number(freightRatePerKm) : undefined,
         deliveryAddress: deliveryAddress.trim() || undefined,
         showExtras,
+        hideTotal,
         projectName: projectName.trim() || undefined,
         paymentConditions: paymentConditions.trim() || undefined,
         paymentTerm: paymentTerm.trim() || undefined,
@@ -601,10 +608,23 @@ export function QuoteBuilder() {
       </Card>
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white rounded-xl border border-gray-200 p-5">
-        <div>
-          <p className="text-sm text-gray-500">Subtotal: {formatCurrency(subtotal)}</p>
-          {computedFreight > 0 && <p className="text-sm text-gray-500">Frete: {formatCurrency(computedFreight)}</p>}
-          <p className="text-xl font-bold text-marble-dark">Total: {formatCurrency(total)}</p>
+        <div className="space-y-3">
+          {hideTotal ? (
+            <div>
+              {computedFreight > 0 && <p className="text-sm text-gray-500">Frete: {formatCurrency(computedFreight)}</p>}
+              <p className="text-base font-semibold text-marble-dark">Valor total não será exibido</p>
+              <p className="text-xs text-gray-400">
+                O cliente vê só o valor de cada item. Soma interna: {formatCurrency(total)}
+              </p>
+            </div>
+          ) : (
+            <div>
+              <p className="text-sm text-gray-500">Subtotal: {formatCurrency(subtotal)}</p>
+              {computedFreight > 0 && <p className="text-sm text-gray-500">Frete: {formatCurrency(computedFreight)}</p>}
+              <p className="text-xl font-bold text-marble-dark">Total: {formatCurrency(total)}</p>
+            </div>
+          )}
+          <HideTotalButton checked={hideTotal} onChange={setHideTotal} className="max-w-sm" />
         </div>
         <div className="text-left sm:text-right">
           {error && <p className="text-sm text-red-600 mb-2">{error}</p>}

@@ -237,6 +237,8 @@ export interface Quote {
   deliveryAddress?: string | null;
   total: number;
   showExtras?: boolean;
+  // Não mostrar a soma (subtotal/total) no PDF e no acompanhamento.
+  hideTotal?: boolean;
   projectName?: string | null;
   paymentConditions?: string | null;
   paymentTerm?: string | null;

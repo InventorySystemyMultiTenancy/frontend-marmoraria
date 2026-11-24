@@ -38,6 +38,8 @@ interface TrackedOrder {
     clientName: string | null;
     // Com algum mármore sob consulta, subtotal e total vêm null (sem valor).
     priceOnRequest?: boolean;
+    // Lojista escolheu mostrar só o valor de cada item (sem subtotal/total).
+    hideTotal?: boolean;
     subtotal: number | null;
     discount: number;
     discountPct: number;
@@ -265,7 +267,16 @@ function OrderCard({ order }: { order: TrackedOrder }) {
           ))}
         </div>
 
-        {order.quote.total == null || order.quote.subtotal == null ? (
+        {order.quote.hideTotal ? (
+          order.quote.freight > 0 && (
+            <div className="mt-4 pt-4 border-t border-white/10 text-sm">
+              <div className="flex justify-between text-white/60">
+                <span>Frete</span>
+                <span>{formatCurrency(order.quote.freight)}</span>
+              </div>
+            </div>
+          )
+        ) : order.quote.total == null || order.quote.subtotal == null ? (
           <div className="mt-4 pt-4 border-t border-white/10 text-sm">
             <div className="flex justify-between text-lg font-bold">
               <span>Total</span>
