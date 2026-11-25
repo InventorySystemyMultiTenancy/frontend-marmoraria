@@ -205,12 +205,14 @@ export default function OrcamentoDetailPage({ params }: { params: Promise<{ id: 
           <p><strong>Telefone:</strong> {data.client?.phone || data.clientPhone || '-'}</p>
           <p><strong>Email:</strong> {data.client?.email || data.clientEmail || '-'}</p>
           <p><strong>CPF/CNPJ:</strong> {data.client?.cpfCnpj || data.clientCpfCnpj || '-'}</p>
-          {(data.client?.address || data.client?.city) && (
+          {(data.client?.address || data.client?.city || (!data.client && data.clientAddress)) && (
             <p>
               <strong>Endereço:</strong>{' '}
-              {[data.client?.address, [data.client?.city, data.client?.state].filter(Boolean).join('/')]
-                .filter(Boolean)
-                .join(' — ')}
+              {data.client
+                ? [data.client.address, [data.client.city, data.client.state].filter(Boolean).join('/')]
+                    .filter(Boolean)
+                    .join(' — ')
+                : data.clientAddress}
             </p>
           )}
           <p><strong>Endereço de entrega:</strong> {data.deliveryAddress ?? '-'}</p>

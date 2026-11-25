@@ -225,6 +225,8 @@ export interface Quote {
   clientPhone?: string | null;
   clientEmail?: string | null;
   clientCpfCnpj?: string | null;
+  // Endereço do cliente avulso (cadastrado usa o do cadastro).
+  clientAddress?: string | null;
   createdBy?: { name: string };
   status: QuoteStatus;
   items: QuoteItem[];

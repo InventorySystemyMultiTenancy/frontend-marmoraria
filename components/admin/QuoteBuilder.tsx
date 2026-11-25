@@ -63,6 +63,7 @@ interface AdminDraftForm {
   clientPhone: string;
   clientEmail: string;
   clientCpfCnpj: string;
+  clientAddress?: string;
   discount: string;
   discountPct: string;
   deliveryAddress: string;
@@ -87,6 +88,7 @@ export function QuoteBuilder() {
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [clientCpfCnpj, setClientCpfCnpj] = useState('');
+  const [clientAddress, setClientAddress] = useState('');
   const [discount, setDiscount] = useState('0');
   const [discountPct, setDiscountPct] = useState('0');
   const [deliveryAddress, setDeliveryAddress] = useState('');
@@ -232,6 +234,7 @@ export function QuoteBuilder() {
     clientPhone,
     clientEmail,
     clientCpfCnpj,
+    clientAddress,
     discount,
     discountPct,
     deliveryAddress,
@@ -268,6 +271,7 @@ export function QuoteBuilder() {
       setClientName(f.clientName ?? '');
       setClientPhone(f.clientPhone ?? '');
       setClientEmail(f.clientEmail ?? '');
+      setClientAddress(f.clientAddress ?? '');
       setClientCpfCnpj(f.clientCpfCnpj ?? '');
       setDiscount(f.discount ?? '0');
       setDiscountPct(f.discountPct ?? '0');
@@ -294,6 +298,7 @@ export function QuoteBuilder() {
         clientName: !useExistingClient ? clientName : undefined,
         clientPhone: !useExistingClient ? clientPhone : undefined,
         clientEmail: !useExistingClient ? clientEmail || undefined : undefined,
+        clientAddress: !useExistingClient ? clientAddress.trim() || undefined : undefined,
         clientCpfCnpj,
         items: items.map((i) => ({
           marbleId: i.marbleId,
@@ -418,6 +423,7 @@ export function QuoteBuilder() {
               <div><Label>Telefone</Label><Input value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} /></div>
               <div><Label>Email</Label><Input value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} /></div>
               <div><Label>CPF ou CNPJ</Label><Input value={clientCpfCnpj} onChange={(e) => setClientCpfCnpj(e.target.value)} placeholder="000.000.000-00" /></div>
+              <div className="sm:col-span-2"><Label>Endereço</Label><Input value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} placeholder="Rua, número, bairro, cidade" /></div>
             </div>
           )}
           <p className="text-xs text-gray-400">

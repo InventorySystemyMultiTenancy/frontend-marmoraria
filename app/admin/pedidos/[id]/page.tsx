@@ -253,12 +253,14 @@ export default function PedidoDetailPage({ params }: { params: Promise<{ id: str
           <p><strong>Telefone:</strong> {quote?.client?.phone || quote?.clientPhone || '-'}</p>
           <p><strong>Email:</strong> {quote?.client?.email || quote?.clientEmail || '-'}</p>
           <p><strong>CPF/CNPJ:</strong> {quote?.client?.cpfCnpj || quote?.clientCpfCnpj || '-'}</p>
-          {(quote?.client?.address || quote?.client?.city) && (
+          {(quote?.client?.address || quote?.client?.city || (quote && !quote.client && quote.clientAddress)) && (
             <p>
               <strong>Endereço:</strong>{' '}
-              {[quote?.client?.address, [quote?.client?.city, quote?.client?.state].filter(Boolean).join('/')]
-                .filter(Boolean)
-                .join(' — ')}
+              {quote?.client
+                ? [quote.client.address, [quote.client.city, quote.client.state].filter(Boolean).join('/')]
+                    .filter(Boolean)
+                    .join(' — ')
+                : quote?.clientAddress}
             </p>
           )}
         </CardContent>

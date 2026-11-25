@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Quote } from '@/types';
@@ -26,20 +26,26 @@ export function QuoteClientDialog({
   const [form, setForm] = useState({ name: '', phone: '', email: '', cpfCnpj: '', address: '', city: '', state: '' });
   const [error, setError] = useState<string | null>(null);
 
+  // Preenche o formulário só quando o diálogo abre. Antes ele era reiniciado a
+  // cada recarga dos dados do orçamento (ex: ao voltar para a janela depois de
+  // copiar um CPF), apagando o que a pessoa estava digitando.
+  const quoteRef = useRef(quote);
+  quoteRef.current = quote;
   useEffect(() => {
     if (!open) return;
+    const quote = quoteRef.current;
     const c = quote.client;
     setForm({
       name: c?.name ?? quote.clientName ?? '',
       phone: c?.phone ?? quote.clientPhone ?? '',
       email: c?.email ?? quote.clientEmail ?? '',
       cpfCnpj: c?.cpfCnpj ?? quote.clientCpfCnpj ?? '',
-      address: c?.address ?? '',
+      address: (c ? c.address : quote.clientAddress) ?? '',
       city: c?.city ?? '',
       state: c?.state ?? '',
     });
     setError(null);
-  }, [open, quote]);
+  }, [open]);
 
   const mutation = useMutation({
     mutationFn: async () =>
@@ -48,9 +54,8 @@ export function QuoteClientDialog({
         phone: form.phone.trim(),
         email: form.email.trim(),
         cpfCnpj: form.cpfCnpj.trim(),
-        ...(isRegistered
-          ? { address: form.address.trim(), city: form.city.trim(), state: form.state.trim() }
-          : {}),
+        address: form.address.trim(),
+        ...(isRegistered ? { city: form.city.trim(), state: form.state.trim() } : {}),
       }),
     onSuccess: () => {
       onSaved();
@@ -101,12 +106,12 @@ export function QuoteClientDialog({
           <Label>CPF ou CNPJ</Label>
           <Input value={form.cpfCnpj} onChange={set('cpfCnpj')} placeholder="000.000.000-00" />
         </div>
+        <div>
+          <Label>Endereço</Label>
+          <Input value={form.address} onChange={set('address')} placeholder="Rua, número, bairro" />
+        </div>
         {isRegistered && (
           <>
-            <div>
-              <Label>Endereço</Label>
-              <Input value={form.address} onChange={set('address')} />
-            </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2">
                 <Label>Cidade</Label>
