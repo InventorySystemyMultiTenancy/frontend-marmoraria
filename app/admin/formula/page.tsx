@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Sigma } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { sanitizeDecimal } from '@/lib/decimal';
 import { Button } from '@/components/ui/button';
 import { Input, Label, Textarea } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -108,8 +109,8 @@ export default function FormulaPage() {
         <CardHeader><CardTitle>Teste ao vivo</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-            <div><Label>Largura (cm)</Label><Input value={testValues.width} onChange={(e) => setTestValues({ ...testValues, width: e.target.value })} /></div>
-            <div><Label>Altura (cm)</Label><Input value={testValues.height} onChange={(e) => setTestValues({ ...testValues, height: e.target.value })} /></div>
+            <div><Label>Largura (cm)</Label><Input inputMode="decimal" value={testValues.width} onChange={(e) => setTestValues({ ...testValues, width: sanitizeDecimal(e.target.value) })} /></div>
+            <div><Label>Altura (cm)</Label><Input inputMode="decimal" value={testValues.height} onChange={(e) => setTestValues({ ...testValues, height: sanitizeDecimal(e.target.value) })} /></div>
             <div><Label>Espessura (mm)</Label><Input value={testValues.thickness} onChange={(e) => setTestValues({ ...testValues, thickness: e.target.value })} /></div>
             <div><Label>Preço/m²</Label><Input value={testValues.pricePerM2} onChange={(e) => setTestValues({ ...testValues, pricePerM2: e.target.value })} /></div>
             <div><Label>Qtd.</Label><Input value={testValues.quantity} onChange={(e) => setTestValues({ ...testValues, quantity: e.target.value })} /></div>

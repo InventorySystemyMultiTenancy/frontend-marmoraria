@@ -12,6 +12,7 @@ import { Company, Marble, SiteSession } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import { calcPieceBreakdown } from '@/lib/pricing';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
+import { sanitizeDecimal } from '@/lib/decimal';
 import { useQuoteDraft } from '@/lib/useQuoteDraft';
 import { DraftResumePrompt, DraftToolbar } from '@/components/QuoteDraftControls';
 
@@ -769,9 +770,9 @@ export function QuoteForm({ session }: { session: SiteSession }) {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Largura (cm)" value={draft.widthCm} onChange={(v) => setDraft((d) => ({ ...d, widthCm: v }))} />
-                  <Field label="Altura (cm)" value={draft.heightCm} onChange={(v) => setDraft((d) => ({ ...d, heightCm: v }))} />
-                  <Field label="Espessura (mm)" value={draft.thicknessMm} onChange={(v) => setDraft((d) => ({ ...d, thicknessMm: v }))} />
+                  <Field label="Largura (cm)" decimal value={draft.widthCm} onChange={(v) => setDraft((d) => ({ ...d, widthCm: v }))} />
+                  <Field label="Altura (cm)" decimal value={draft.heightCm} onChange={(v) => setDraft((d) => ({ ...d, heightCm: v }))} />
+                  <Field label="Espessura (mm)" decimal value={draft.thicknessMm} onChange={(v) => setDraft((d) => ({ ...d, thicknessMm: v }))} />
                   <Field label="Quantidade" value={draft.quantity} onChange={(v) => setDraft((d) => ({ ...d, quantity: v }))} />
                 </div>
 
@@ -1051,18 +1052,22 @@ function Field({
   value,
   onChange,
   placeholder,
+  decimal,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
+  // Medida: aceita vírgula ou ponto e até 4 casas decimais.
+  decimal?: boolean;
 }) {
   return (
     <div>
       <label className="text-sm text-white/60 mb-1 block">{label}</label>
       <input
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        inputMode={decimal ? 'decimal' : undefined}
+        onChange={(e) => onChange(decimal ? sanitizeDecimal(e.target.value) : e.target.value)}
         placeholder={placeholder}
         className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-marble-gold"
       />

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { sanitizeDecimal } from '@/lib/decimal';
 import { Marble, QuoteItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input, Label, Select } from '@/components/ui/input';
@@ -121,7 +122,7 @@ export function QuoteItemEditDialog({
   }, [item, dimsTouched, dims.widthCm, dims.heightCm, dims.thicknessMm, pricePerM2]);
 
   function updateDim(field: 'widthCm' | 'heightCm' | 'thicknessMm', value: string) {
-    setDims((d) => ({ ...d, [field]: value }));
+    setDims((d) => ({ ...d, [field]: sanitizeDecimal(value) }));
     setDimsTouched(true);
   }
 
@@ -211,17 +212,17 @@ export function QuoteItemEditDialog({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <div>
             <Label>Comprimento (cm)</Label>
-            <Input type="number" min={0} value={dims.widthCm} onChange={(e) => updateDim('widthCm', e.target.value)} />
+            <Input type="text" inputMode="decimal" value={dims.widthCm} onChange={(e) => updateDim('widthCm', e.target.value)} />
           </div>
           <div>
             <Label>Profundidade (cm)</Label>
-            <Input type="number" min={0} value={dims.heightCm} onChange={(e) => updateDim('heightCm', e.target.value)} />
+            <Input type="text" inputMode="decimal" value={dims.heightCm} onChange={(e) => updateDim('heightCm', e.target.value)} />
           </div>
           <div>
             <Label>Espessura (mm)</Label>
             <Input
-              type="number"
-              min={0}
+              type="text"
+              inputMode="decimal"
               value={dims.thicknessMm}
               onChange={(e) => updateDim('thicknessMm', e.target.value)}
             />

@@ -23,6 +23,7 @@ const schema = z.object({
   email: z.string().email('Email inválido').optional().or(z.literal('')),
   phone: z.string().optional(),
   cpfCnpj: z.string().optional(),
+  address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
   notes: z.string().optional(),
@@ -64,7 +65,7 @@ export default function ClientesPage() {
 
   function openCreate() {
     setEditing(null);
-    reset({ name: '', email: '', phone: '', cpfCnpj: '', city: '', state: '', notes: '' });
+    reset({ name: '', email: '', phone: '', cpfCnpj: '', address: '', city: '', state: '', notes: '' });
     setShowForm(true);
   }
 
@@ -75,6 +76,7 @@ export default function ClientesPage() {
       email: client.email ?? '',
       phone: client.phone ?? '',
       cpfCnpj: client.cpfCnpj ?? '',
+      address: client.address ?? '',
       city: client.city ?? '',
       state: client.state ?? '',
       notes: client.notes ?? '',
@@ -189,6 +191,10 @@ export default function ClientesPage() {
               <Label>Email</Label>
               <Input {...register('email')} />
             </div>
+          </div>
+          <div>
+            <Label>Endereço</Label>
+            <Input {...register('address')} placeholder="Rua, número, bairro" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>

@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 import { calcPieceBreakdown } from '@/lib/pricing';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
+import { sanitizeDecimal } from '@/lib/decimal';
 import { useQuoteDraft } from '@/lib/useQuoteDraft';
 import { useAuthStore } from '@/store/authStore';
 import { DraftResumePrompt, DraftToolbar } from '@/components/QuoteDraftControls';
@@ -450,9 +451,9 @@ export function QuoteBuilder() {
                   </div>
                   <div><Label>Descrição</Label><Input value={item.description} onChange={(e) => updateItem(idx, { description: e.target.value })} placeholder="Ex: Pia 2.00x0.60 com instalação" /></div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:col-span-2">
-                    <div><Label>Comprimento (cm)</Label><Input type="number" value={item.widthCm} onChange={(e) => updateItem(idx, { widthCm: e.target.value })} /></div>
-                    <div><Label>Profundidade (cm)</Label><Input type="number" value={item.heightCm} onChange={(e) => updateItem(idx, { heightCm: e.target.value })} /></div>
-                    <div><Label>Espessura (mm)</Label><Input type="number" value={item.thicknessMm} onChange={(e) => updateItem(idx, { thicknessMm: e.target.value })} /></div>
+                    <div><Label>Comprimento (cm)</Label><Input type="text" inputMode="decimal" placeholder="0,0000" value={item.widthCm} onChange={(e) => updateItem(idx, { widthCm: sanitizeDecimal(e.target.value) })} /></div>
+                    <div><Label>Profundidade (cm)</Label><Input type="text" inputMode="decimal" placeholder="0,0000" value={item.heightCm} onChange={(e) => updateItem(idx, { heightCm: sanitizeDecimal(e.target.value) })} /></div>
+                    <div><Label>Espessura (mm)</Label><Input type="text" inputMode="decimal" value={item.thicknessMm} onChange={(e) => updateItem(idx, { thicknessMm: sanitizeDecimal(e.target.value) })} /></div>
                     <div><Label>Qtd.</Label><Input type="number" value={item.quantity} onChange={(e) => updateItem(idx, { quantity: e.target.value })} /></div>
                   </div>
                 </div>
